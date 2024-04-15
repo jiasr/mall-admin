@@ -2,6 +2,8 @@ import { router, addRoutes } from "~/router";
 import { getToken } from "~/composables/auth";
 import { toast, showFullLoading, hideFullLoading } from "~/composables/util";
 import store from "./store";
+import test from "./store";
+
 
 // 全局前置守卫
 let hasGetInfo = false;
@@ -33,7 +35,7 @@ router.beforeEach(async (to, from, next) => {
   }
 
   // 设置页面标题
-  let title = (to.meta.title ? to.meta.title : "Vue3") + "-追梦编程商城后台";
+  let title = (to.meta.title ? to.meta.title : "Vue3") + "-" +test;
   document.title = title;
 
   hasNewRoutes ? next(to.fullPath) : next();

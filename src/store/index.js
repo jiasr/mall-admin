@@ -66,4 +66,7 @@ const store = createStore({
   },
 });
 
+export const test = "这是一个test文本"
+
 export default store;
+
