@@ -1,5 +1,5 @@
 # 基础镜像
-FROM node:24.
+FROM node:20.11.1
 # 设置工作目录
 WORKDIR /app
 # 复制应用程序代码到容器中
