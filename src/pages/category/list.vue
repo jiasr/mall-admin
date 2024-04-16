@@ -64,7 +64,7 @@ export default {
   methods: {
     async fetchData() {
       try {
-        const response = await axios.get('http://localhost:8099/goodscatalog/list'); // 使用GET请求获取数据
+        const response = await axios.get('http://localhost:8099/goodscatalog/list?currentPage=2&pageSize=5'); // 使用GET请求获取数据
         this.tableData = response.data.list;
         this.total = response.data.list.length
          this.text = this.tableData.length > 0 ? '暂无数据' : ''
