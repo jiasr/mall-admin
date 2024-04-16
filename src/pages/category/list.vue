@@ -1,77 +1,126 @@
 <template>
     <div>
-        分类列表{{ msg }}$store.state.user.avatar
+      <el-table :data="tableData" height="500" style="width: 100%">
+        <template slot="empty">
+          <p>{{empty}}</p>
+        </template>
 
-        <el-table :data="tableData" height="250" style="width: 100%">
-        <el-table-column prop="date" label="Date" width="180" />
-        <el-table-column prop="name" label="Name" width="180" />
-        <el-table-column prop="address" label="Address" />
+        <el-table-column type="selection"> </el-table-column>
+        <el-table-column prop="createTime" label="创建时间" width="180" sortable='custom' />
+        <el-table-column prop="name" label="名称" width="180" />
+        <el-table-column prop="level" label="level" />
+     
+        <!-- 操作 -->
+        <el-table-column label="操作" width="220">
+          <template slot-scope="level">
+            <el-button size="small" @click="edit(scope.row,scope.$index)" type="primary">编辑</el-button>
+            <el-button size="small" @click="remove(scope.row,scope.$index)" type="danger">删除</el-button>
+          </template>
+        </el-table-column>
       </el-table>
-
+    </div>
+    <div class="pagination">
+      <el-pagination
+        background
+        layout="total,prev,pager,next,sizes,jumper"
+        :total="total"
+        :page-sizes="[10, 20, 30, 50]"
+        :page-size="pageSize"
+        :current-page.sync="pageNum"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+      >
+      </el-pagination>
     </div>
 </template>
 
-<script  setup>
-import axios from 'axios'; // 导入axios库
 
+<script>
 console.log('hello script setup')
+const msg = 'Hello!'
+
 function log() {
   console.log(msg)
 }
-const msg = 'Hello!'
-
-
-</script>
-
-<script>
- 
 export default {
   name: 'YourComponent',
   data() {
     return {
-      // 你的数据属性
+      // 复选框所选中信息
+      selection: [],
+      selectStr: "",
+      // 表格数据
+      tableData: [],
+      // 总条数
+      total: 0,
+  
+      // 页面条数
+      pageSize: 10,
+  
+      // 页码
+      pageNum: 1,
     };
   },
   methods: {
     async fetchData() {
       try {
         const response = await axios.get('http://localhost:8099/goodscatalog/list'); // 使用GET请求获取数据
-        // 处理响应数据
-        console.log(response.data)
-        this.someData = response.data; // 假设你想把数据存储在组件的某些Data属性中
-        this.tableData = [
-          {
-            date: '2016-05-03',
-            name: 'Tom',
-            address: 'No. 189, Grove St, Los Angeles',
-          },
-          {
-            date: '2016-05-02',
-            name: 'Tom',
-            address: 'No. 189, Grove St, Los Angeles',
-          }
-        ]
+        this.tableData = response.data.list;
+        this.total = response.data.list.length
+         this.text = this.tableData.length > 0 ? '暂无数据' : ''
       } catch (error) {
         console.error('Error fetching data:', error); // 错误处理
-        this.tableData = [
-          {
-            date: '2019-05-03',
-            name: 'Tom',
-            address: 'No. 189, Grove St, Los Angeles',
-          },
-          {
-            date: '2019-05-02',
-            name: 'Tom',
-            address: 'No. 189, Grove St, Los Angeles',
-          }
-        ]
       }
     },
-    // 其他方法...
+    // 数量回调
+    handleSizeChange(e) {
+      this.pageSize = e;
+      this.getList();
+    },
+    // 页码回调
+    handleCurrentChange(e) {
+      this.pageNum = e;
+      this.getList();
+    },
+    // 复选框回调
+    handleSelectionChange(val) {
+      this.selection = val;
+      this.selectStr = val.map(function (e) {return e.id}).join(",");
+    },
+    sortChange(column){
+    this.pageNum = 1
+    
+    if(column.order === 'ascending'){ // 降序
+      this.list.sort(this.ascSortFun)
+    }else if(column.order === 'descending'){ // 升序
+      this.list.sort(this.desSortFun)
+    }else{
+      this.getList()
+    }
+  },
+ 
+  //升序
+  ascSortFun(a, b) {
+    if (a.id > b.id) return 1;
+    if (a.id == b.id) return 0;
+    if (a.id < b.id) return -1;
+  },
+ 
+  //降序
+  desSortFun(a,b){
+    if (a.id > b.id) return -1;
+    if (a.id == b.id) return 0;
+    if (a.id < b.id) return 1;
+    }
+
   },
   created() {
     this.fetchData(); // 在组件创建时发送请求
   }
 };
 </script>
-
+<style>
+.el-tooltip__popper {
+    width: 250px;
+}
+</style>
