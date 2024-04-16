@@ -5,8 +5,8 @@ const store = createStore({
   state() {
     return {
       // 用户信息
+      remoteurl : "http://localhost:8089",
       user: {},
-
       // 侧边宽度
       asideWidth: "250px",
       menus: [],
@@ -66,7 +66,6 @@ const store = createStore({
   },
 });
 
-export const test = "这是一个test文本"
-
+//const  test = "这是一个test文本"
 export default store;
 

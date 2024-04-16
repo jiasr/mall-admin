@@ -10,12 +10,11 @@ import * as ElementPlusIconsVue from "@element-plus/icons-vue";
 
 const app = createApp(App);
 app.use(store);
-
 app.use(router);
-
 app.use(ElementPlus);
 
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+  console.log(key)
   app.component(key, component);
 }
 import "virtual:windi.css";
@@ -23,5 +22,6 @@ import "virtual:windi.css";
 import "./permission";
 
 import "nprogress/nprogress.css";
+
 
 app.mount("#app");
