@@ -4,7 +4,6 @@
         <template slot="empty">
           <p>{{empty}}</p>
         </template>
-
         <el-table-column type="selection"> </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="180" sortable='custom' />
         <el-table-column prop="name" label="名称" width="180" />
@@ -24,7 +23,7 @@
         background
         layout="total,prev,pager,next,sizes,jumper"
         :total="total"
-        :page-sizes="[10, 20, 30, 50]"
+        :page-sizes="[5,10, 20, 30, 50]"
         :page-size="pageSize"
         :current-page.sync="pageNum"
         @size-change="handleSizeChange"
@@ -55,7 +54,7 @@ export default {
       total: 0,
   
       // 页面条数
-      pageSize: 10,
+      pageSize: 5,
   
       // 页码
       pageNum: 1,
@@ -64,10 +63,15 @@ export default {
   methods: {
     async fetchData() {
       try {
-        const response = await axios.get('http://localhost:8099/goodscatalog/list?currentPage=2&pageSize=5'); // 使用GET请求获取数据
-        this.tableData = response.data.list;
-        this.total = response.data.list.length
-         this.text = this.tableData.length > 0 ? '暂无数据' : ''
+        const url = 'http://localhost:8099/v1/goodscatalog/list?currentPage='+this.pageNum+'&pageSize='+this.pageSize;
+        const response = await axios.get(url); // 使用GET请求获取数据
+        if(response.data.flag ==true){
+          this.tableData = response.data.resData.data;
+          this.total = response.data.resData.total
+        }else{
+          this.text = this.tableData.length > 0 ? '暂无数据' : ''
+        }
+         
       } catch (error) {
         console.error('Error fetching data:', error); // 错误处理
       }
@@ -75,12 +79,12 @@ export default {
     // 数量回调
     handleSizeChange(e) {
       this.pageSize = e;
-      this.getList();
+      this.fetchData();
     },
     // 页码回调
     handleCurrentChange(e) {
       this.pageNum = e;
-      this.getList();
+      this.fetchData();
     },
     // 复选框回调
     handleSelectionChange(val) {
@@ -95,7 +99,7 @@ export default {
     }else if(column.order === 'descending'){ // 升序
       this.list.sort(this.desSortFun)
     }else{
-      this.getList()
+      this.fetchData()
     }
   },
  
