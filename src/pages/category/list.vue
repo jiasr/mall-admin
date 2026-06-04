@@ -63,7 +63,7 @@ export default {
   methods: {
     async fetchData() {
       try {
-        const url = 'http://localhost:8099/v1/goodscatalog/list?currentPage='+this.pageNum+'&pageSize='+this.pageSize;
+        const url = 'http://localhost:8560/v1/goodscatalog/list?currentPage='+this.pageNum+'&pageSize='+this.pageSize;
         const response = await axios.get(url); // 使用GET请求获取数据
         if(response.data.flag ==true){
           this.tableData = response.data.resData.data;
