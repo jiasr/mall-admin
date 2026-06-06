@@ -38,7 +38,7 @@ router.beforeEach(async (to, from, next) => {
   let title = (to.meta.title ? to.meta.title : "Vue3") + "-" +test;
   document.title = title;
 
-  hasNewRoutes ? next(to.fullPath) : next();
+  hasNewRoutes ? next({ ...to, replace: true }) : next();
 });
 
 // 全局后置守卫

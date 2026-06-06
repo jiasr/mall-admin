@@ -5,7 +5,7 @@ const store = createStore({
   state() {
     return {
       // 用户信息
-      remoteurl : "http://localhost:8089",
+      remoteurl : "http://localhost:8560",
       user: {},
       // 侧边宽度
       asideWidth: "250px",
@@ -48,8 +48,44 @@ const store = createStore({
         getinfo()
           .then((res) => {
             console.log(res);
+            // 确保前端页面所需的菜单存在（若后端未返回则自动补上）
+            const menus = res.menus || []
+            const findMenu = (arr, path) => {
+              for (const item of arr) {
+                if (item.frontpath === path) return true
+                if (item.child && item.child.length) {
+                  if (findMenu(item.child, path)) return true
+                }
+              }
+              return false
+            }
+            // 补上规格管理
+            if (!findMenu(menus, '/spec/list')) {
+              const goodsMenu = menus.find(m => m.name === '商品管理' || (m.child && m.child.some(c => c.name === '商品管理' || c.name === '商品列表')))
+              if (goodsMenu && goodsMenu.child) {
+                goodsMenu.child.push({
+                  name: '规格管理',
+                  frontpath: '/spec/list',
+                  icon: 'Setting',
+                })
+              } else {
+                menus.push({
+                  name: '规格管理',
+                  frontpath: '/spec/list',
+                  icon: 'Setting',
+                })
+              }
+            }
+            // 补上优惠券管理
+            if (!findMenu(menus, '/coupon/list')) {
+              menus.push({
+                name: '优惠券管理',
+                frontpath: '/coupon/list',
+                icon: 'Ticket',
+              })
+            }
             commit("SET_USERINFO", res);
-            commit("SET_MENUS", res.menus);
+            commit("SET_MENUS", menus);
             commit("SET_RULENAMES", res.ruleNames);
             resolve(res);
           })

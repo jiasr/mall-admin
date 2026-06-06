@@ -18,7 +18,7 @@
 .main {
     width: 100vw;
     height: 100vh;
-    background: url("/public/404.png") center fixed;
+    background: url("/404.png") center fixed;
     position: relative;
 }
 

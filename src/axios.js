@@ -25,7 +25,21 @@ service.interceptors.request.use(function (config) {
 // 添加响应拦截器
 service.interceptors.response.use(function (response) {
     // 对响应数据做点什么
-    return response.data.data;
+    const resp = response.data
+    // 兼容两种响应格式:
+    // 1. admin API: { data: {...} }
+    // 2. mall API: { flag: true, resData: {...} }
+    if (resp && resp.flag !== undefined) {
+        // mall 格式
+        if (!resp.flag) {
+            const msg = resp.exceptionMsg || "请求失败"
+            toast(msg, "error")
+            return Promise.reject(new Error(msg))
+        }
+        return resp.resData
+    }
+    // admin 格式，原逻辑
+    return resp.data
   }, function (error) {
     const msg = error.response.data.msg || "请求失败"
     

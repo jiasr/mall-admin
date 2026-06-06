@@ -5,7 +5,10 @@ import Index from "~/pages/index.vue";
 import Login from "~/pages/login.vue";
 import NotFound from "~/pages/404.vue";
 import GoodList from "~/pages/goods/list.vue";
+import GoodsAdd from "~/pages/goods/add.vue";
 import CategoryList from "~/pages/category/list.vue";
+import SpecList from "~/pages/spec/list.vue";
+import CouponList from "~/pages/coupon/list.vue";
 
 /* const routes = [
     {
@@ -66,11 +69,35 @@ const asyncRoutes = [
     },
   },
   {
+    path: "/goods/add",
+    name: "/goods/add",
+    component: GoodsAdd,
+    meta: {
+      title: "添加商品",
+    },
+  },
+  {
     path: "/category/list",
     name: "/category/list",
     component: CategoryList,
     meta: {
       title: "分类列表",
+    },
+  },
+  {
+    path: "/spec/list",
+    name: "/spec/list",
+    component: SpecList,
+    meta: {
+      title: "规格管理",
+    },
+  },
+  {
+    path: "/coupon/list",
+    name: "/coupon/list",
+    component: CouponList,
+    meta: {
+      title: "优惠券管理",
     },
   },
 ];
@@ -98,6 +125,15 @@ export function addRoutes(menus) {
     });
   };
   findAndAddRoutesByMenus(menus)
+
+  // 注册所有 asyncRoutes（包括后端菜单中没有的，如 /goods/add）
+  // 这样通过 $router.push 导航到的页面也能正常访问
+  asyncRoutes.forEach((item) => {
+    if (!router.hasRoute(item.path)) {
+      router.addRoute("admin", item);
+      hasNewRoutes = true;
+    }
+  });
 
   // console.log("获取路由",router.getRoutes());
   return hasNewRoutes;
