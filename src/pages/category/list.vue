@@ -37,7 +37,10 @@
                 </template>
             </el-table-column>
 
-            <el-table-column label="排序" width="80" align="center">
+            <el-table-column width="90" align="center">
+                <template #header>
+                    排序 <el-tooltip content="数字越大越靠前" placement="top"><span class="tip-icon">?</span></el-tooltip>
+                </template>
                 <template #default="scope">
                     {{ scope.row.sort ?? scope.row.sortOrder ?? '-' }}
                 </template>
@@ -87,7 +90,8 @@
                     <el-tag :type="dialogLevelTagType">{{ form.level }}级分类</el-tag>
                 </el-form-item>
                 <el-form-item label="排序号" prop="sortOrder">
-                    <el-input-number v-model="form.sortOrder" :min="0" :max="999" placeholder="数字越小越靠前" />
+                    <el-input-number v-model="form.sortOrder" :min="0" :max="999" />
+                    <span class="form-tip">数字越大越靠前</span>
                 </el-form-item>
             </el-form>
             <template #footer>
@@ -342,5 +346,25 @@ onMounted(() => {
 
 .mr-2 {
     margin-right: 6px;
+}
+
+.form-tip {
+    margin-left: 8px;
+    font-size: 12px;
+    color: #909399;
+}
+
+.tip-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #c0c4cc;
+    color: #fff;
+    font-size: 10px;
+    cursor: help;
+    margin-left: 2px;
 }
 </style>
