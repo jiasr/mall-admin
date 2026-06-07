@@ -2,7 +2,13 @@
     <div class="goods-page">
         <!-- 顶部筛选栏 -->
         <el-card class="filter-card" shadow="never">
-            <el-form :inline="true" :model="filterForm">
+            <el-form :inline="true" :model="filterForm" class="filter-form">
+                <el-form-item>
+                    <el-button type="success" @click="$router.push('/goods/add')">
+                        <el-icon><Plus /></el-icon> 添加商品
+                    </el-button>
+                </el-form-item>
+                <span class="filter-separator"></span>
                 <el-form-item label="关键词">
                     <el-input v-model="filterForm.keyword" placeholder="商品标题" clearable @keyup.enter="handleSearch" />
                 </el-form-item>
@@ -36,12 +42,7 @@
 
         <!-- 商品表格 -->
         <el-card class="table-card" shadow="never">
-            <div class="table-header">
-                <el-button type="primary" @click="$router.push('/goods/add')">
-                    <el-icon><Plus /></el-icon> 添加商品
-                </el-button>
-            </div>
-            <el-table :data="tableData" border style="width: 100%" v-loading="loading">
+            <el-table :data="tableData" border size="small" style="width: 100%" v-loading="loading">
                 <el-table-column label="商品图片" width="100" align="center">
                     <template #default="scope">
                         <el-image
@@ -83,10 +84,34 @@
 
                 <el-table-column prop="soldNum" label="销量" width="80" align="center" />
 
-                <el-table-column label="操作" width="140" fixed="right" align="center">
+                <el-table-column label="操作" width="260" fixed="right" align="center">
                     <template #default="scope">
                         <el-button type="primary" size="small" link @click="handleView(scope.row)">
                             <el-icon><View /></el-icon> 查看
+                        </el-button>
+                        <el-button type="primary" size="small" link @click="handleEdit(scope.row)">
+                            <el-icon><Edit /></el-icon> 编辑
+                        </el-button>
+                        <el-button
+                            v-if="scope.row.isPutOnSale !== 0"
+                            type="warning"
+                            size="small"
+                            link
+                            @click="handleToggleSale(scope.row)"
+                        >
+                            <el-icon><Bottom /></el-icon> 下架
+                        </el-button>
+                        <el-button
+                            v-else
+                            type="success"
+                            size="small"
+                            link
+                            @click="handleToggleSale(scope.row)"
+                        >
+                            <el-icon><Top /></el-icon> 上架
+                        </el-button>
+                        <el-button type="danger" size="small" link @click="handleDelete(scope.row)">
+                            <el-icon><Delete /></el-icon> 删除
                         </el-button>
                     </template>
                 </el-table-column>
@@ -160,9 +185,13 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { Search, Refresh, Picture, View, Plus } from '@element-plus/icons-vue'
-import { getGoodsList, getGoodsDetail } from '~/api/goods'
+import { useRouter } from 'vue-router'
+import { Search, Refresh, Picture, View, Plus, Edit, Delete, Top, Bottom } from '@element-plus/icons-vue'
+import { getGoodsList, getGoodsDetail, deleteGoods, putOnSale, pullOffSale } from '~/api/goods'
 import { getCategoryTree } from '~/api/category'
+import { toast, showModal } from '~/composables/util'
+
+const router = useRouter()
 
 const loading = ref(false)
 const tableData = ref([])
@@ -199,6 +228,7 @@ async function handleSearch() {
         }
         if (filterForm.keyword) params.keyword = filterForm.keyword
         if (filterForm.categoryId) params.categoryId = filterForm.categoryId
+        if (filterForm.status !== null && filterForm.status !== '') params.isPutOnSale = filterForm.status
 
         const data = await getGoodsList(params)
         if (data) {
@@ -236,6 +266,44 @@ async function handleView(row) {
     }
 }
 
+// 编辑商品
+function handleEdit(row) {
+    router.push(`/goods/add?spuId=${row.spuId}`)
+}
+
+// 上架/下架
+async function handleToggleSale(row) {
+    const action = row.isPutOnSale !== 0 ? '下架' : '上架'
+    try {
+        await showModal(`确定要${action}该商品吗？`, 'warning', `${action}确认`)
+        if (row.isPutOnSale !== 0) {
+            await pullOffSale(row.spuId)
+        } else {
+            await putOnSale(row.spuId)
+        }
+        toast(`${action}成功`, 'success')
+        handleSearch()
+    } catch (e) {
+        if (e !== 'cancel') {
+            console.error(`${action}失败`, e)
+        }
+    }
+}
+
+// 删除商品
+async function handleDelete(row) {
+    try {
+        await showModal('确定要删除该商品吗？此操作不可恢复！', 'error', '删除确认')
+        await deleteGoods(row.spuId)
+        toast('删除成功', 'success')
+        handleSearch()
+    } catch (e) {
+        if (e !== 'cancel') {
+            console.error('删除失败', e)
+        }
+    }
+}
+
 onMounted(() => {
     loadCategoryOptions()
     handleSearch()
@@ -246,7 +314,7 @@ onMounted(() => {
 .goods-page {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
 }
 
 .filter-card {
@@ -254,17 +322,28 @@ onMounted(() => {
 }
 
 .filter-card :deep(.el-card__body) {
-    padding-bottom: 0;
+    padding: 12px 16px 0;
+}
+
+.filter-card :deep(.el-form-item) {
+    margin-bottom: 12px;
+}
+
+.filter-separator {
+    display: inline-block;
+    width: 1px;
+    height: 20px;
+    background: #dcdfe6;
+    margin: 0 12px;
+    vertical-align: middle;
 }
 
 .table-card {
     border: none;
 }
 
-.table-header {
-    display: flex;
-    justify-content: flex-start;
-    margin-bottom: 16px;
+.table-card :deep(.el-card__body) {
+    padding: 12px 16px;
 }
 
 .price {
@@ -281,7 +360,7 @@ onMounted(() => {
 .pagination {
     display: flex;
     justify-content: flex-end;
-    margin-top: 16px;
+    margin-top: 12px;
 }
 
 .image-slot {

@@ -14,3 +14,23 @@ export function getGoodsDetail(spuId) {
 export function addGoods(data) {
     return axios.post("/mall/v1/goods/admin/goods/add", data)
 }
+
+// 更新商品
+export function updateGoods(spuId, data) {
+    return axios.post(`/mall/v1/goods/admin/goods/update/${spuId}`, data)
+}
+
+// 删除商品
+export function deleteGoods(spuId) {
+    return axios.post(`/mall/v1/goods/admin/goods/delete/${spuId}`)
+}
+
+// 上架商品
+export function putOnSale(spuId) {
+    return axios.post(`/mall/v1/goods/admin/goods/putOnSale/${spuId}`)
+}
+
+// 下架商品
+export function pullOffSale(spuId) {
+    return axios.post(`/mall/v1/goods/admin/goods/pullOffSale/${spuId}`)
+}

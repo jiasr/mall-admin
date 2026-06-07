@@ -11,6 +11,8 @@
     "@element-plus/icons-vue": "^1.1.4",
     "@vueuse/core": "^9.3.0",
     "@vueuse/integrations": "^8.4.1",
+    "@wangeditor/editor": "^5.1.23",
+    "@wangeditor/editor-for-vue": "^5.1.12",
     "axios": "^0.27.2",
     "element-plus": "^2.1.11",
     "jquery": "2.2.0",

@@ -32,8 +32,8 @@
                     <el-col :span="12">
                         <el-form-item label="上架状态">
                             <el-radio-group v-model="form.isPutOnSale">
-                                <el-radio :value="1">立即上架</el-radio>
-                                <el-radio :value="0">暂不上架</el-radio>
+                                <el-radio :label="1">立即上架</el-radio>
+                                <el-radio :label="0">暂不上架</el-radio>
                             </el-radio-group>
                         </el-form-item>
                     </el-col>
@@ -70,6 +70,16 @@
                         <el-button type="primary" :icon="Plus" plain size="small" @click="addDesc">添加详情图</el-button>
                     </div>
                 </el-form-item>
+
+                <!-- ====== 规格 ====== -->
+                <el-divider content-position="left">
+                    <span class="divider-title">商品详情</span>
+                </el-divider>
+
+                <div class="editor-wrapper">
+                    <Toolbar :editor="editorRef" :defaultConfig="toolbarConfig" mode="default" />
+                    <Editor :defaultConfig="editorConfig" mode="default" v-model="form.detail" @onCreated="onEditorCreated" />
+                </div>
 
                 <!-- ====== 规格 ====== -->
                 <el-divider content-position="left">
@@ -208,7 +218,7 @@
         <!-- 底部操作栏 -->
         <div class="bottom-bar">
             <el-button type="primary" size="large" @click="handleSubmit" :loading="submitting">
-                <el-icon><Check /></el-icon> 保存商品
+                <el-icon><Check /></el-icon> {{ isEdit ? '更新商品' : '保存商品' }}
             </el-button>
             <el-button size="large" @click="handleCancel">取消</el-button>
         </div>
@@ -216,15 +226,21 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, onMounted, nextTick, shallowRef } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { Plus, Delete, Check } from '@element-plus/icons-vue'
 import { toast } from '~/composables/util'
-import { addGoods } from '~/api/goods'
+import { addGoods, updateGoods, getGoodsDetail } from '~/api/goods'
 import { getCategoryTree } from '~/api/category'
+import '@wangeditor/editor/dist/css/style.css'
+import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 
 const router = useRouter()
+const route = useRoute()
 const formRef = ref(null)
+
+const isEdit = ref(false)
+const editSpuId = ref(null)
 
 const form = reactive({
     title: '',
@@ -234,6 +250,7 @@ const form = reactive({
     primaryImage: '',
     images: [],
     desc: [],
+    detail: '',
     specs: [],
     skus: [],
     tags: [],
@@ -241,6 +258,37 @@ const form = reactive({
 
 const rules = {
     title: [{ required: true, message: '请输入商品标题', trigger: 'blur' }],
+}
+
+// 富文本编辑器
+const editorRef = shallowRef()
+
+const toolbarConfig = {
+    excludeKeys: ['group-table', 'todo', 'group-video'],
+}
+
+const editorConfig = {
+    placeholder: '请输入商品详情，支持图文混排...',
+    MENU_CONF: {
+        uploadImage: {
+            async customUpload(file, insertFn) {
+                const reader = new FileReader()
+                reader.onload = (e) => {
+                    insertFn(e.target.result, file.name)
+                }
+                reader.readAsDataURL(file)
+            },
+        },
+    },
+}
+
+function onEditorCreated(editor) {
+    editorRef.value = editor
+    // 为编辑器内容区添加移动端友好样式
+    const editorEl = editor.getEditableContainer()
+    if (editorEl) {
+        editorEl.style.cssText = 'word-break:break-word;overflow-wrap:break-word;'
+    }
 }
 
 const categoryTree = ref([])
@@ -358,6 +406,7 @@ async function handleSubmit() {
             primaryImage: form.primaryImage,
             images: form.images.filter(u => u.trim()),
             desc: form.desc.filter(u => u.trim()),
+            detail: form.detail,
             specs: form.specs.map(s => ({
                 specId: randomId(),
                 title: s.title,
@@ -374,8 +423,13 @@ async function handleSubmit() {
             tags: form.tags.map(t => (typeof t === 'string' ? { title: t } : t)),
         }
 
-        await addGoods(payload)
-        toast('商品添加成功', 'success')
+        if (isEdit.value) {
+            await updateGoods(editSpuId.value, payload)
+            toast('商品更新成功', 'success')
+        } else {
+            await addGoods(payload)
+            toast('商品添加成功', 'success')
+        }
         router.push('/goods/list')
     } catch (e) {
         console.error('添加商品失败', e)
@@ -405,6 +459,56 @@ onMounted(async () => {
         categoryTree.value = await getCategoryTree()
     } catch (e) {
         console.error('加载分类树失败', e)
+    }
+
+    // 编辑模式：根据 spuId 加载商品数据回填
+    const spuId = route.query.spuId
+    if (spuId) {
+        isEdit.value = true
+        editSpuId.value = spuId
+        try {
+            const data = await getGoodsDetail(spuId)
+            if (data) {
+                form.title = data.title || ''
+                form.etitle = data.etitle || ''
+                form.categoryId = data.categoryId || null
+                form.isPutOnSale = data.isPutOnSale ?? 0
+                form.primaryImage = data.primaryImage || ''
+                form.images = data.images || []
+                form.desc = data.desc || []
+                form.detail = data.detail || ''
+                form.tags = data.tags || []
+
+                // 回填规格
+                if (data.specs && data.specs.length) {
+                    form.specs = data.specs.map(s => ({
+                        title: s.title || '',
+                        values: (s.values || []).map(v => ({
+                            specValueId: v.specValueId || randomId(),
+                            specId: v.specId || randomId(),
+                            specValue: v.specValue || '',
+                        })),
+                        inputVisible: false,
+                        inputValue: '',
+                    }))
+                }
+
+                // 回填 SKU
+                if (data.skuList && data.skuList.length) {
+                    form.skus = data.skuList.map(s => ({
+                        skuId: s.skuId || randomId(),
+                        skuImage: s.skuImage || '',
+                        price: (s.priceInfo && s.priceInfo[0]?.price) || 0,
+                        linePrice: (s.priceInfo && s.priceInfo[0]?.linePrice) || 0,
+                        stockQuantity: (s.stockInfo && s.stockInfo.stockQuantity) || 0,
+                        specInfo: s.specInfo || [],
+                    }))
+                }
+            }
+        } catch (e) {
+            console.error('加载商品数据失败', e)
+            toast('加载商品数据失败', 'error')
+        }
     }
 })
 </script>
@@ -481,6 +585,21 @@ onMounted(async () => {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
+}
+
+.editor-wrapper {
+    border: 1px solid #dcdfe6;
+    border-radius: 4px;
+    z-index: 1;
+}
+
+.editor-wrapper :deep(.w-e-toolbar) {
+    border-bottom: 1px solid #dcdfe6;
+    border-radius: 4px 4px 0 0;
+}
+
+.editor-wrapper :deep(.w-e-text-container) {
+    min-height: 400px;
 }
 
 .bottom-bar {
