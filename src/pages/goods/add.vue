@@ -71,15 +71,6 @@
                     </div>
                 </el-form-item>
 
-                <!-- ====== 规格 ====== -->
-                <el-divider content-position="left">
-                    <span class="divider-title">商品详情</span>
-                </el-divider>
-
-                <div class="editor-wrapper">
-                    <Toolbar :editor="editorRef" :defaultConfig="toolbarConfig" mode="default" />
-                    <Editor :defaultConfig="editorConfig" mode="default" v-model="form.detail" @onCreated="onEditorCreated" />
-                </div>
 
                 <!-- ====== 规格 ====== -->
                 <el-divider content-position="left">
@@ -212,6 +203,16 @@
                         <el-button v-else size="small" :icon="Plus" @click="showTagInput">添加标签</el-button>
                     </div>
                 </el-form-item>
+
+                <!-- ====== 商品详情 ====== -->
+                <el-divider content-position="left">
+                    <span class="divider-title">商品详情</span>
+                </el-divider>
+
+                <div class="editor-wrapper">
+                    <Toolbar :editor="editorRef" :defaultConfig="toolbarConfig" mode="default" />
+                    <Editor :defaultConfig="editorConfig" mode="default" v-model="form.detail" @onCreated="onEditorCreated" />
+                </div>
             </el-form>
         </el-card>
 
