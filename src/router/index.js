@@ -9,6 +9,9 @@ import GoodsAdd from "~/pages/goods/add.vue";
 import CategoryList from "~/pages/category/list.vue";
 import SpecList from "~/pages/spec/list.vue";
 import CouponList from "~/pages/coupon/list.vue";
+import GrouponList from "~/pages/groupon/list.vue";
+import GrouponAdd from "~/pages/groupon/add.vue";
+import GrouponOrder from "~/pages/groupon/order.vue";
 
 /* const routes = [
     {
@@ -98,6 +101,30 @@ const asyncRoutes = [
     component: CouponList,
     meta: {
       title: "优惠券管理",
+    },
+  },
+  {
+    path: "/groupon/list",
+    name: "/groupon/list",
+    component: GrouponList,
+    meta: {
+      title: "团购管理",
+    },
+  },
+  {
+    path: "/groupon/add",
+    name: "/groupon/add",
+    component: GrouponAdd,
+    meta: {
+      title: "添加团购",
+    },
+  },
+  {
+    path: "/groupon/order",
+    name: "/groupon/order",
+    component: GrouponOrder,
+    meta: {
+      title: "团购订单",
     },
   },
 ];

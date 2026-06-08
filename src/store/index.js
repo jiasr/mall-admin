@@ -84,6 +84,26 @@ const store = createStore({
                 icon: 'Ticket',
               })
             }
+            // 补上团购管理
+            if (!findMenu(menus, '/groupon/list')) {
+              const grouponMenu = {
+                name: '团购管理',
+                icon: 'Goods',
+                child: [
+                  {
+                    name: '团购活动',
+                    frontpath: '/groupon/list',
+                    icon: 'Goods',
+                  },
+                  {
+                    name: '团购订单',
+                    frontpath: '/groupon/order',
+                    icon: 'ShoppingCart',
+                  },
+                ],
+              }
+              menus.push(grouponMenu)
+            }
             commit("SET_USERINFO", res);
             commit("SET_MENUS", menus);
             commit("SET_RULENAMES", res.ruleNames);

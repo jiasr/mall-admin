@@ -49,6 +49,20 @@
             </el-col>
         </el-row>
 
+        <el-row :gutter="20" class="stat-cards" style="margin-top: 0">
+            <el-col :span="6">
+                <el-card shadow="hover" class="stat-card">
+                    <div class="stat-icon" style="background: #fdf3ff; color: #9b59b6;">
+                        <el-icon :size="32"><Goods /></el-icon>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-value">{{ stats.grouponActiveCount }}</div>
+                        <div class="stat-label">进行中的团购</div>
+                    </div>
+                </el-card>
+            </el-col>
+        </el-row>
+
         <el-card class="quick-links">
             <template #header>
                 <span>快捷操作</span>
@@ -66,6 +80,9 @@
                 <el-button type="info">
                     <el-icon><User /></el-icon> 用户管理
                 </el-button>
+                <el-button type="danger" @click="$router.push('/groupon/list')">
+                    <el-icon><Goods /></el-icon> 团购管理
+                </el-button>
             </el-space>
         </el-card>
     </div>
@@ -77,11 +94,14 @@ import { Goods, List, User, ShoppingCart, Document } from '@element-plus/icons-v
 import { getCategoryTree } from '~/api/category'
 import axios from '~/axios'
 
+import { getGrouponList } from '~/api/groupon'
+
 const stats = reactive({
     goodsCount: 0,
     categoryCount: 0,
     userCount: 0,
     orderCount: 0,
+    grouponActiveCount: 0,
 })
 
 async function loadStats() {
@@ -104,6 +124,14 @@ async function loadStats() {
         const goodsRes = await axios.get("/v1/goods/simple-list?pageIndex=1&pageSize=1")
         // 简单获取（如果可以的话）
         stats.goodsCount = '-'
+
+        // 统计进行中的团购活动数
+        try {
+            const grouponRes = await getGrouponList({ pageNum: 1, pageSize: 1, status: 1 })
+            stats.grouponActiveCount = grouponRes.totalCount || 0
+        } catch {
+            stats.grouponActiveCount = '-'
+        }
     } catch (e) {
         console.error('加载统计数据失败', e)
     }
