@@ -16,9 +16,9 @@ export default defineConfig({
   server:{
     proxy:{
       '/api/admin': {
-        target: 'http://ceshi13.dishait.cn',
+        target: 'http://localhost:8560',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        rewrite: (path) => path.replace(/^\/api\/admin/, '')
       },
       '/api/mall': {
         target: 'http://localhost:8560',
