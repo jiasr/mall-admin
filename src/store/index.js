@@ -48,97 +48,10 @@ const store = createStore({
         getinfo()
           .then((res) => {
             console.log(res);
-            // 确保前端页面所需的菜单存在（若后端未返回则自动补上）
             const menus = res.menus || []
-            const findMenu = (arr, path) => {
-              for (const item of arr) {
-                if (item.frontpath === path) return true
-                if (item.child && item.child.length) {
-                  if (findMenu(item.child, path)) return true
-                }
-              }
-              return false
-            }
-            // 补上规格管理
-            if (!findMenu(menus, '/spec/list')) {
-              const goodsMenu = menus.find(m => m.name === '商品管理' || (m.child && m.child.some(c => c.name === '商品管理' || c.name === '商品列表')))
-              if (goodsMenu && goodsMenu.child) {
-                goodsMenu.child.push({
-                  name: '规格管理',
-                  frontpath: '/spec/list',
-                  icon: 'Setting',
-                })
-              } else {
-                menus.push({
-                  name: '规格管理',
-                  frontpath: '/spec/list',
-                  icon: 'Setting',
-                })
-              }
-            }
-            // 补上优惠券管理
-            if (!findMenu(menus, '/coupon/list')) {
-              menus.push({
-                name: '优惠券管理',
-                frontpath: '/coupon/list',
-                icon: 'Ticket',
-              })
-            }
-            // 补上用户管理
-            if (!findMenu(menus, '/user/list')) {
-              menus.push({
-                name: '用户管理',
-                frontpath: '/user/list',
-                icon: 'User',
-              })
-            }
-            // 补上分销员管理
-            if (!findMenu(menus, '/agent/list')) {
-              menus.push({
-                name: '分销员管理',
-                frontpath: '/agent/list',
-                icon: 'UserFilled',
-              })
-            }
-            // 补上基础设置
-            if (!findMenu(menus, '/setting/base')) {
-              menus.push({
-                name: '基础设置',
-                frontpath: '/setting/base',
-                icon: 'Setting',
-              })
-            }
-            // 补上订单管理
-            if (!findMenu(menus, '/order/list')) {
-              menus.push({
-                name: '订单管理',
-                frontpath: '/order/list',
-                icon: 'ShoppingCart',
-              })
-            }
-            // 补上团购管理
-            if (!findMenu(menus, '/groupon/list')) {
-              const grouponMenu = {
-                name: '团购管理',
-                icon: 'Goods',
-                child: [
-                  {
-                    name: '团购活动',
-                    frontpath: '/groupon/list',
-                    icon: 'Goods',
-                  },
-                  {
-                    name: '团购订单',
-                    frontpath: '/groupon/order',
-                    icon: 'ShoppingCart',
-                  },
-                ],
-              }
-              menus.push(grouponMenu)
-            }
             commit("SET_USERINFO", res);
             commit("SET_MENUS", menus);
-            commit("SET_RULENAMES", res.ruleNames);
+            commit("SET_RULENAMES", res.ruleNames || []);
             resolve(res);
           })
           .catch((err) => reject(err));
