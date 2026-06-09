@@ -1,16 +1,12 @@
-# 基础镜像
-FROM node:20.11.1
-# 设置工作目录
+# 构建阶段
+FROM node:20.11.1 as builder
 WORKDIR /app
-# 复制应用程序代码到容器中
 COPY . .
-# 安装依赖
-RUN yarn install
-# 构建应用程序
-RUN yarn build
-# 设置环境变量
-ENV NODE_ENV=production
-# 暴露端口
-EXPOSE 8888
-# 启动应用程序
-CMD ["npm", "run", "dev"]
+RUN yarn install && yarn build
+
+# 运行阶段 - nginx
+FROM nginx:alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
