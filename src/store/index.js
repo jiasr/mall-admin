@@ -84,6 +84,38 @@ const store = createStore({
                 icon: 'Ticket',
               })
             }
+            // 补上用户管理
+            if (!findMenu(menus, '/user/list')) {
+              menus.push({
+                name: '用户管理',
+                frontpath: '/user/list',
+                icon: 'User',
+              })
+            }
+            // 补上分销员管理
+            if (!findMenu(menus, '/agent/list')) {
+              menus.push({
+                name: '分销员管理',
+                frontpath: '/agent/list',
+                icon: 'UserFilled',
+              })
+            }
+            // 补上基础设置
+            if (!findMenu(menus, '/setting/base')) {
+              menus.push({
+                name: '基础设置',
+                frontpath: '/setting/base',
+                icon: 'Setting',
+              })
+            }
+            // 补上订单管理
+            if (!findMenu(menus, '/order/list')) {
+              menus.push({
+                name: '订单管理',
+                frontpath: '/order/list',
+                icon: 'ShoppingCart',
+              })
+            }
             // 补上团购管理
             if (!findMenu(menus, '/groupon/list')) {
               const grouponMenu = {

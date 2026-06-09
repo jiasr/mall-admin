@@ -12,6 +12,11 @@ import CouponList from "~/pages/coupon/list.vue";
 import GrouponList from "~/pages/groupon/list.vue";
 import GrouponAdd from "~/pages/groupon/add.vue";
 import GrouponOrder from "~/pages/groupon/order.vue";
+import OrderList from "~/pages/order/list.vue";
+import UserList from "~/pages/user/list.vue";
+import AgentList from "~/pages/agent/list.vue";
+import SettingBase from "~/pages/setting/base.vue";
+import UserList from "~/pages/user/list.vue";
 
 /* const routes = [
     {
@@ -125,6 +130,38 @@ const asyncRoutes = [
     component: GrouponOrder,
     meta: {
       title: "团购订单",
+    },
+  },
+  {
+    path: "/order/list",
+    name: "/order/list",
+    component: OrderList,
+    meta: {
+      title: "订单管理",
+    },
+  },
+  {
+    path: "/user/list",
+    name: "/user/list",
+    component: UserList,
+    meta: {
+      title: "用户管理",
+    },
+  },
+  {
+    path: "/agent/list",
+    name: "/agent/list",
+    component: AgentList,
+    meta: {
+      title: "分销员管理",
+    },
+  },
+  {
+    path: "/setting/base",
+    name: "/setting/base",
+    component: SettingBase,
+    meta: {
+      title: "基础设置",
     },
   },
 ];
