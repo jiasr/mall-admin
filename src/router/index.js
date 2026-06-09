@@ -16,7 +16,6 @@ import OrderList from "~/pages/order/list.vue";
 import UserList from "~/pages/user/list.vue";
 import AgentList from "~/pages/agent/list.vue";
 import SettingBase from "~/pages/setting/base.vue";
-import UserList from "~/pages/user/list.vue";
 
 /* const routes = [
     {
