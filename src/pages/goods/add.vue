@@ -45,16 +45,44 @@
                 </el-divider>
 
                 <el-form-item label="主图">
-                    <div class="image-upload">
-                        <el-input v-model="form.primaryImage" placeholder="输入主图URL" style="width: 400px" />
-                        <span class="tip">商品列表展示的主图，建议尺寸 750x750</span>
+                    <div class="image-upload-row">
+                        <div class="image-preview" v-if="form.primaryImage">
+                            <el-image :src="form.primaryImage" fit="contain" style="width:80px;height:80px" />
+                        </div>
+                        <el-input v-model="form.primaryImage" placeholder="输入主图URL或点击上传" style="width: 350px" />
+                        <el-upload
+                            class="inline-upload"
+                            action="#"
+                            :show-file-list="false"
+                            :auto-upload="false"
+                            accept="image/*"
+                            :before-upload="() => false"
+                            @change="(file) => handleFileUpload(file, 'primaryImage', 'product')"
+                        >
+                            <el-button type="primary" :icon="Upload" plain size="small" :loading="imageUploading">上传</el-button>
+                        </el-upload>
+                        <span class="tip">建议尺寸 750x750</span>
                     </div>
                 </el-form-item>
 
                 <el-form-item label="轮播图">
                     <div class="images-section">
                         <div v-for="(url, i) in form.images" :key="i" class="image-row">
-                            <el-input v-model="form.images[i]" placeholder="输入图片URL" style="width: 400px" />
+                            <div class="image-preview" v-if="url">
+                                <el-image :src="url" fit="contain" style="width:60px;height:60px" />
+                            </div>
+                            <el-input v-model="form.images[i]" placeholder="输入图片URL或点击上传" style="width: 350px" />
+                            <el-upload
+                                class="inline-upload"
+                                action="#"
+                                :show-file-list="false"
+                                :auto-upload="false"
+                                accept="image/*"
+                                :before-upload="() => false"
+                                @change="(file) => handleImageSlotUpload(file, i, 'images', 'product')"
+                            >
+                                <el-button type="primary" :icon="Upload" plain size="small" circle :loading="imageUploading" />
+                            </el-upload>
                             <el-button type="danger" :icon="Delete" circle size="small" @click="removeImage(i)" />
                         </div>
                         <el-button type="primary" :icon="Plus" plain size="small" @click="addImage">添加轮播图</el-button>
@@ -64,7 +92,21 @@
                 <el-form-item label="详情图">
                     <div class="images-section">
                         <div v-for="(url, i) in form.desc" :key="i" class="image-row">
-                            <el-input v-model="form.desc[i]" placeholder="输入详情图URL" style="width: 400px" />
+                            <div class="image-preview" v-if="url">
+                                <el-image :src="url" fit="contain" style="width:60px;height:60px" />
+                            </div>
+                            <el-input v-model="form.desc[i]" placeholder="输入详情图URL或点击上传" style="width: 350px" />
+                            <el-upload
+                                class="inline-upload"
+                                action="#"
+                                :show-file-list="false"
+                                :auto-upload="false"
+                                accept="image/*"
+                                :before-upload="() => false"
+                                @change="(file) => handleImageSlotUpload(file, i, 'desc', 'product')"
+                            >
+                                <el-button type="primary" :icon="Upload" plain size="small" circle :loading="imageUploading" />
+                            </el-upload>
                             <el-button type="danger" :icon="Delete" circle size="small" @click="removeDesc(i)" />
                         </div>
                         <el-button type="primary" :icon="Plus" plain size="small" @click="addDesc">添加详情图</el-button>
@@ -147,9 +189,22 @@
                                 <span v-else class="no-spec">无规格</span>
                             </template>
                         </el-table-column>
-                        <el-table-column label="SKU图片" width="180">
+                        <el-table-column label="SKU图片" width="220">
                             <template #default="scope">
-                                <el-input v-model="scope.row.skuImage" placeholder="图片URL" size="small" />
+                                <div class="sku-image-cell">
+                                    <el-input v-model="scope.row.skuImage" placeholder="图片URL" size="small" style="width: 120px" />
+                                    <el-upload
+                                        class="inline-upload"
+                                        action="#"
+                                        :show-file-list="false"
+                                        :auto-upload="false"
+                                        accept="image/*"
+                                        :before-upload="() => false"
+                                        @change="(file) => handleSkuImageUpload(file, scope.$index)"
+                                    >
+                                        <el-button type="primary" :icon="Upload" size="small" circle :loading="imageUploading" />
+                                    </el-upload>
+                                </div>
                             </template>
                         </el-table-column>
                         <el-table-column label="售价(分)" width="120">
@@ -229,16 +284,19 @@
 <script setup>
 import { ref, reactive, onMounted, nextTick, shallowRef } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Plus, Delete, Check } from '@element-plus/icons-vue'
+import { Plus, Delete, Check, Upload } from '@element-plus/icons-vue'
 import { toast } from '~/composables/util'
 import { addGoods, updateGoods, getGoodsDetail } from '~/api/goods'
 import { getCategoryTree } from '~/api/category'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
+import { useImageUpload } from '~/composables/useImageUpload'
 
 const router = useRouter()
 const route = useRoute()
 const formRef = ref(null)
+
+const { uploading: imageUploading, handleUpload } = useImageUpload()
 
 const isEdit = ref(false)
 const editSpuId = ref(null)
@@ -273,11 +331,11 @@ const editorConfig = {
     MENU_CONF: {
         uploadImage: {
             async customUpload(file, insertFn) {
-                const reader = new FileReader()
-                reader.onload = (e) => {
-                    insertFn(e.target.result, file.name)
+                // 使用 MinIO 上传，上传成功后插入公网 URL
+                const url = await handleUpload(file, 'editor')
+                if (url) {
+                    insertFn(url, file.name, url)
                 }
-                reader.readAsDataURL(file)
             },
         },
     },
@@ -295,7 +353,32 @@ function onEditorCreated(editor) {
 const categoryTree = ref([])
 const submitting = ref(false)
 
-// ====== 图片 ======
+// ====== 图片上传处理 ======
+async function handleFileUpload(file, field, scene) {
+    if (!file?.raw) return
+    const url = await handleUpload(file.raw, scene)
+    if (url) {
+        form[field] = url
+    }
+}
+
+async function handleImageSlotUpload(file, index, field, scene) {
+    if (!file?.raw) return
+    const url = await handleUpload(file.raw, scene)
+    if (url) {
+        form[field][index] = url
+    }
+}
+
+async function handleSkuImageUpload(file, index) {
+    if (!file?.raw) return
+    const url = await handleUpload(file.raw, 'product')
+    if (url) {
+        form.skus[index].skuImage = url
+    }
+}
+
+// ====== 图片列表操作 ======
 function addImage() { form.images.push('') }
 function removeImage(i) { form.images.splice(i, 1) }
 function addDesc() { form.desc.push('') }
@@ -538,7 +621,13 @@ onMounted(async () => {
     margin-left: 8px;
 }
 
-.image-upload,
+.image-upload-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 .images-section {
     display: flex;
     flex-direction: column;
@@ -549,6 +638,23 @@ onMounted(async () => {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.image-preview {
+    flex-shrink: 0;
+    border: 1px solid #ebeef5;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.inline-upload {
+    display: inline-flex;
+}
+
+.sku-image-cell {
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .specs-section {

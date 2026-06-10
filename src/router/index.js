@@ -17,6 +17,7 @@ import UserList from "~/pages/user/list.vue";
 import AgentList from "~/pages/agent/list.vue";
 import SettingBase from "~/pages/setting/base.vue";
 import SettingRole from "~/pages/setting/role.vue";
+import SettingMinio from "~/pages/setting/minio.vue";
 
 /* const routes = [
     {
@@ -170,6 +171,14 @@ const asyncRoutes = [
     component: SettingRole,
     meta: {
       title: "角色与权限管理",
+    },
+  },
+  {
+    path: "/setting/minio",
+    name: "/setting/minio",
+    component: SettingMinio,
+    meta: {
+      title: "MinIO 存储配置",
     },
   },
 ];

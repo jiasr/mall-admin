@@ -11,7 +11,7 @@ export function useRepassword() {
     const formDrawerRef = ref(null)
     const form = reactive({
         oldpassword: "",
-        password: "",
+        newpassword: "",
         repassword: ""
     })
 
@@ -23,7 +23,7 @@ export function useRepassword() {
                 trigger: 'blur'
             },
         ],
-        password: [
+        newpassword: [
             {
                 required: true,
                 message: '新密码不能为空',
@@ -43,6 +43,10 @@ export function useRepassword() {
     const onSubmit = () => {
         formRef.value.validate((valid) => {
             if (!valid) {
+                return false
+            }
+            if (form.newpassword !== form.repassword) {
+                toast("两次输入的密码不一致", "error")
                 return false
             }
             formDrawerRef.value.showLoading()

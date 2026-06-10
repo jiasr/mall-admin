@@ -47,8 +47,8 @@
             <el-form-item prop="oldpassword" label="旧密码">
                 <el-input v-model="form.oldpassword" placeholder="请输入旧密码"></el-input>
             </el-form-item>
-            <el-form-item prop="password" label="新密码">
-                <el-input type="password" v-model="form.password" placeholder="请输入密码" show-password></el-input>
+            <el-form-item prop="newpassword" label="新密码">
+                <el-input type="password" v-model="form.newpassword" placeholder="请输入密码" show-password></el-input>
             </el-form-item>
             <el-form-item prop="repassword" label="确认密码">
                 <el-input type="password" v-model="form.repassword" placeholder="请输入确认密码" show-password></el-input>

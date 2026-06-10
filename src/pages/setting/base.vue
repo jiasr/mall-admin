@@ -1,31 +1,36 @@
 <template>
     <div class="setting-page">
+        <!-- 基础设置 -->
         <el-card shadow="never">
             <template #header>
                 <span class="section-title">基础设置</span>
             </template>
             <el-form :model="form" label-width="120px" style="max-width: 600px">
                 <el-form-item label="商城名称">
-                    <el-input v-model="form.siteName" placeholder="请输入商城名称" />
+                    <el-input v-model="form.site_name" placeholder="请输入商城名称" />
                 </el-form-item>
                 <el-form-item label="商城Logo">
-                    <el-upload
-                        class="avatar-uploader"
-                        action="#"
-                        :show-file-list="false"
-                        :auto-upload="false"
-                        accept="image/*"
-                        @change="handleLogoChange"
-                    >
+                    <div class="logo-upload-area">
                         <el-avatar v-if="form.logo" :src="form.logo" :size="64" shape="square" />
-                        <el-icon v-else :size="32"><Plus /></el-icon>
-                    </el-upload>
+                        <el-upload
+                            class="avatar-uploader"
+                            action="#"
+                            :show-file-list="false"
+                            :auto-upload="false"
+                            accept="image/*"
+                            :before-upload="() => false"
+                            @change="handleLogoChange"
+                        >
+                            <el-icon :size="28"><Plus /></el-icon>
+                        </el-upload>
+                        <span class="upload-tip">点击上传，建议尺寸 200x60</span>
+                    </div>
                 </el-form-item>
                 <el-form-item label="客服电话">
-                    <el-input v-model="form.servicePhone" placeholder="请输入客服电话" />
+                    <el-input v-model="form.service_phone" placeholder="请输入客服电话" />
                 </el-form-item>
                 <el-form-item label="客服邮箱">
-                    <el-input v-model="form.serviceEmail" placeholder="请输入客服邮箱" />
+                    <el-input v-model="form.service_email" placeholder="请输入客服邮箱" />
                 </el-form-item>
                 <el-form-item>
                     <el-button type="primary" :loading="saving" @click="handleSave">保存设置</el-button>
@@ -33,21 +38,22 @@
             </el-form>
         </el-card>
 
+        <!-- 注册与访问 -->
         <el-card shadow="never" style="margin-top: 20px">
             <template #header>
                 <span class="section-title">注册与访问</span>
             </template>
             <el-form :model="form" label-width="120px" style="max-width: 600px">
                 <el-form-item label="允许注册">
-                    <el-switch v-model="form.allowRegister" />
+                    <el-switch v-model="form.allow_register" />
                     <span class="form-tip">关闭后用户将无法自主注册</span>
                 </el-form-item>
                 <el-form-item label="注册需审核">
-                    <el-switch v-model="form.registerNeedAudit" />
+                    <el-switch v-model="form.register_need_audit" />
                     <span class="form-tip">开启后用户注册需管理员审核</span>
                 </el-form-item>
                 <el-form-item label="启用分销">
-                    <el-switch v-model="form.enableDistribution" />
+                    <el-switch v-model="form.enable_distribution" />
                     <span class="form-tip">开启后用户可申请成为分销员</span>
                 </el-form-item>
                 <el-form-item>
@@ -55,6 +61,7 @@
                 </el-form-item>
             </el-form>
         </el-card>
+
     </div>
 </template>
 
@@ -62,44 +69,56 @@
 import { reactive, ref, onMounted } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 import { toast } from '~/composables/util'
-import axios from '~/axios'
+import { getSetting, saveSetting } from '~/api/setting'
+import { useImageUpload } from '~/composables/useImageUpload'
 
 const saving = ref(false)
+const { handleUpload } = useImageUpload()
 
 const form = reactive({
-    siteName: '',
+    // 基础设置
+    site_name: '',
     logo: '',
-    servicePhone: '',
-    serviceEmail: '',
-    allowRegister: true,
-    registerNeedAudit: false,
-    enableDistribution: true,
+    service_phone: '',
+    service_email: '',
+    // 注册与访问
+    allow_register: true,
+    register_need_audit: false,
+    enable_distribution: true,
 })
 
 async function loadSetting() {
     try {
-        const data = await axios.get('/v1/admin/setting/get')
+        const data = await getSetting()
         if (data) {
-            Object.assign(form, data)
+            // 布尔值从后端返回的是 true/false，直接赋值
+            Object.keys(form).forEach(key => {
+                if (data[key] !== undefined) {
+                    form[key] = data[key]
+                }
+            })
         }
     } catch {
         // 后端未提供接口时使用默认值
     }
 }
 
-function handleLogoChange(file) {
-    // 本地预览
-    const reader = new FileReader()
-    reader.onload = (e) => {
-        form.logo = e.target.result
+async function handleLogoChange(file) {
+    if (!file?.raw) return
+    // 使用 MinIO 上传
+    const url = await handleUpload(file.raw, 'system')
+    if (url) {
+        form.logo = url
+        toast('Logo 上传成功', 'success')
     }
-    reader.readAsDataURL(file.raw)
 }
 
 async function handleSave() {
     saving.value = true
     try {
-        await axios.post('/v1/admin/setting/save', form)
+        // 构建提交数据（转换为后端期望的 snake_case key）
+        const payload = { ...form }
+        await saveSetting(payload)
         toast('保存成功', 'success')
     } catch {
         toast('保存失败，请稍后重试', 'error')
@@ -124,6 +143,12 @@ onMounted(() => {
     color: #303133;
 }
 
+.logo-upload-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
 .avatar-uploader {
     cursor: pointer;
     border: 1px dashed #dcdfe6;
@@ -138,6 +163,11 @@ onMounted(() => {
 
 .avatar-uploader:hover {
     border-color: #409eff;
+}
+
+.upload-tip {
+    font-size: 12px;
+    color: #909399;
 }
 
 .form-tip {
