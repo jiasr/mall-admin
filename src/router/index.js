@@ -16,6 +16,7 @@ import OrderList from "~/pages/order/list.vue";
 import UserList from "~/pages/user/list.vue";
 import AgentList from "~/pages/agent/list.vue";
 import SettingBase from "~/pages/setting/base.vue";
+import SettingRole from "~/pages/setting/role.vue";
 
 /* const routes = [
     {
@@ -161,6 +162,14 @@ const asyncRoutes = [
     component: SettingBase,
     meta: {
       title: "基础设置",
+    },
+  },
+  {
+    path: "/setting/role",
+    name: "/setting/role",
+    component: SettingRole,
+    meta: {
+      title: "角色与权限管理",
     },
   },
 ];

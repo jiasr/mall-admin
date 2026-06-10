@@ -44,17 +44,8 @@ const defaultActive = ref(route.path)
 const isCollapse = computed(() => !(store.state.asideWidth == '250px'))
 
 const asideMenus = computed(() => {
-    const menus = store.state.menus.map(item => {
-        if (item.child && item.child.length > 0) {
-            const sorted = [...item.child].sort((a, b) => {
-                if (a.name === '分类管理') return -1
-                if (b.name === '分类管理') return 1
-                return 0
-            })
-            return { ...item, child: sorted }
-        }
-        return item
-    })
+    const menus = store.state.menus || []
+    // 后端已按 sort_order 排序，前端直接使用
     return menus
 })
 
