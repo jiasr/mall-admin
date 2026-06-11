@@ -520,7 +520,8 @@ async function handleSubmit() {
         }
         router.push('/goods/list')
     } catch (e) {
-        console.error('添加商品失败', e)
+        // 数据可能已入库，仅提示网络异常
+        toast('保存失败: ' + (e.message || '请稍后重试'), 'error')
     } finally {
         submitting.value = false
     }
