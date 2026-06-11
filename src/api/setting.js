@@ -41,6 +41,16 @@ export function deleteImage(objectName) {
     return axios.post('/v1/upload/delete', { object_name: objectName })
 }
 
+// 服务端代理上传（文件发后端，后端转存 MinIO）
+export function proxyUpload(file, scene = 'product') {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('scene', scene)
+    return axios.post('/v1/upload/file', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    })
+}
+
 // 测试存储连接
 export function testConnection() {
     return axios.post('/v1/upload/test')

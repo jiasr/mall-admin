@@ -1,10 +1,60 @@
 /**
  * 图片上传 Composable
- * 使用 MinIO 直传方案：获取预签名 URL -> 直接 PUT 到 MinIO -> 确认上传
+ * 使用服务端代理上传：文件发后端 -> 后端上传到 MinIO -> 返回 URL
+ * 自动压缩图片（最大 1920px，JPEG 质量 0.8）
  */
 import { ref } from 'vue'
 import { toast } from '~/composables/util'
-import { getUploadCredential, confirmUpload } from '~/api/setting'
+import { proxyUpload } from '~/api/setting'
+
+/** 压缩图片（客户端 Canvas 压缩，减小上传体积） */
+function compressImage(file, maxWidth = 1920, quality = 0.8) {
+    return new Promise((resolve, reject) => {
+        // 非图片或小于 100KB 的图片不压缩
+        if (!file.type.startsWith('image/') || file.size < 100 * 1024) {
+            return resolve(file)
+        }
+
+        const img = new Image()
+        const url = URL.createObjectURL(file)
+
+        img.onload = () => {
+            URL.revokeObjectURL(url)
+
+            let { width, height } = img
+            // 等比缩放
+            if (width > maxWidth) {
+                height = Math.round(height * (maxWidth / width))
+                width = maxWidth
+            }
+
+            const canvas = document.createElement('canvas')
+            canvas.width = width
+            canvas.height = height
+            const ctx = canvas.getContext('2d')
+            ctx.drawImage(img, 0, 0, width, height)
+
+            canvas.toBlob((blob) => {
+                if (!blob) return reject(new Error('压缩失败'))
+
+                // 保留原始文件名，修改后缀为 .jpg（压缩后统一转 JPEG）
+                const name = file.name.replace(/\.[^.]+$/, '.jpg')
+                const compressed = new File([blob], name, { type: 'image/jpeg' })
+
+                // 压缩后反而更大就别压缩了（极小图片）
+                if (compressed.size >= file.size) return resolve(file)
+                resolve(compressed)
+            }, 'image/jpeg', quality)
+        }
+
+        img.onerror = () => {
+            URL.revokeObjectURL(url)
+            reject(new Error('图片加载失败'))
+        }
+
+        img.src = url
+    })
+}
 
 export function useImageUpload() {
     const uploading = ref(false)
@@ -23,47 +73,22 @@ export function useImageUpload() {
         progress.value = 0
 
         try {
-            // 1. 获取上传凭证
-            const credData = await getUploadCredential(scene, file.name)
-            const credential = credData?.credentials?.[0]
-            if (!credential) {
-                throw new Error('获取上传凭证失败')
+            // 1. 压缩图片
+            const compressed = await compressImage(file)
+            if (compressed !== file) {
+                console.log(`图片已压缩: ${(file.size / 1024).toFixed(0)}KB -> ${(compressed.size / 1024).toFixed(0)}KB`)
             }
 
-            const { upload_url, public_url, object_name } = credential
+            // 2. 上传到后端（后端转存 MinIO）
+            const res = await proxyUpload(compressed, scene)
 
-            // 2. 直传 MinIO
-            await new Promise((resolve, reject) => {
-                const xhr = new XMLHttpRequest()
-                xhr.open('PUT', upload_url, true)
-                xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream')
-
-                xhr.upload.onprogress = (e) => {
-                    if (e.lengthComputable) {
-                        progress.value = Math.round((e.loaded / e.total) * 90)
-                    }
-                }
-
-                xhr.onload = () => {
-                    if (xhr.status === 200 || xhr.status === 204) {
-                        resolve()
-                    } else {
-                        reject(new Error(`上传失败: HTTP ${xhr.status}`))
-                    }
-                }
-
-                xhr.onerror = () => reject(new Error('网络错误，上传失败'))
-                xhr.send(file)
-            })
-
-            progress.value = 95
-
-            // 3. 确认上传
-            await confirmUpload(object_name)
+            if (!res?.success || !res?.data?.public_url) {
+                throw new Error(res?.message || '上传失败')
+            }
 
             progress.value = 100
             toast('上传成功', 'success')
-            return public_url
+            return res.data.public_url
 
         } catch (e) {
             console.error('图片上传失败:', e)
@@ -114,26 +139,10 @@ export function useImageUpload() {
 
     async function handleSingleFileInBatch(file, scene) {
         try {
-            const credData = await getUploadCredential(scene, file.name)
-            const credential = credData?.credentials?.[0]
-            if (!credential) return ''
-
-            const { upload_url, public_url, object_name } = credential
-
-            await new Promise((resolve, reject) => {
-                const xhr = new XMLHttpRequest()
-                xhr.open('PUT', upload_url, true)
-                xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream')
-                xhr.onload = () => {
-                    if (xhr.status === 200 || xhr.status === 204) resolve()
-                    else reject(new Error(`HTTP ${xhr.status}`))
-                }
-                xhr.onerror = () => reject(new Error('网络错误'))
-                xhr.send(file)
-            })
-
-            await confirmUpload(object_name)
-            return public_url
+            const compressed = await compressImage(file)
+            const res = await proxyUpload(compressed, scene)
+            if (!res?.success || !res?.data?.public_url) return ''
+            return res.data.public_url
         } catch (e) {
             console.error('文件上传失败:', file.name, e)
             return ''
