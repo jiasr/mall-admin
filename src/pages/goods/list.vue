@@ -381,9 +381,10 @@ onMounted(async () => {
     handleSearch()
 })
 
-// Keep-alive 缓存激活时重新加载分类树
+// Keep-alive 缓存激活时重新加载分类树和商品列表
 onActivated(() => {
     loadCategoryOptions()
+    handleSearch()
 })
 </script>
 
