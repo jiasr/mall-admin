@@ -224,7 +224,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, onActivated, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Refresh, Picture, View, Plus, Edit, Delete, Top, Bottom, Folder, List } from '@element-plus/icons-vue'
 import { getGoodsList, getGoodsDetail, deleteGoods, putOnSale, pullOffSale } from '~/api/goods'
@@ -379,6 +379,11 @@ async function handleDelete(row) {
 onMounted(async () => {
     await loadCategoryOptions()
     handleSearch()
+})
+
+// Keep-alive 缓存激活时重新加载分类树
+onActivated(() => {
+    loadCategoryOptions()
 })
 </script>
 

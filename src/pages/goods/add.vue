@@ -286,7 +286,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, nextTick, shallowRef } from 'vue'
+import { ref, reactive, onMounted, onActivated, nextTick, shallowRef } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Plus, Delete, Check, Upload } from '@element-plus/icons-vue'
 import { toast } from '~/composables/util'
@@ -541,13 +541,18 @@ function cartesianProduct(arrays) {
     return arrays[0].flatMap(v => rest.map(r => [v, ...r]))
 }
 
-// ====== 初始化 ======
-onMounted(async () => {
+// ====== 加载分类树 ======
+async function loadCategoryTree() {
     try {
         categoryTree.value = await getCategoryTree()
     } catch (e) {
         console.error('加载分类树失败', e)
     }
+}
+
+// ====== 初始化 ======
+onMounted(async () => {
+    await loadCategoryTree()
 
     // 编辑模式：根据 spuId 加载商品数据回填
     const spuId = route.query.spuId
@@ -598,6 +603,11 @@ onMounted(async () => {
             toast('加载商品数据失败', 'error')
         }
     }
+})
+
+// Keep-alive 缓存激活时重新加载分类树（用户在分类页新增后切回来能刷新）
+onActivated(() => {
+    loadCategoryTree()
 })
 </script>
 
