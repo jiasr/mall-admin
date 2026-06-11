@@ -178,7 +178,7 @@ const asyncRoutes = [
     name: "/setting/minio",
     component: SettingMinio,
     meta: {
-      title: "MinIO 存储配置",
+      title: "存储配置",
     },
   },
 ];
