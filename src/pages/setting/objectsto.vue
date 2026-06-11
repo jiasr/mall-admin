@@ -24,29 +24,25 @@
 
             <el-form :model="form" label-width="150px" style="max-width: 650px">
                 <el-form-item label="Endpoint">
-                    <el-input v-model="form.objectsto_endpoint" placeholder="如 http://127.0.0.1:9000" />
+                    <el-input v-model="form.endpoint" placeholder="如 http://127.0.0.1:9000" />
                     <span class="form-tip">S3 兼容存储的服务地址</span>
                 </el-form-item>
                 <el-form-item label="AccessKey ID">
-                    <el-input v-model="form.objectsto_access_key" placeholder="AccessKey ID" />
+                    <el-input v-model="form.access_key" placeholder="AccessKey ID" />
                 </el-form-item>
                 <el-form-item label="AccessKey Secret">
-                    <el-input v-model="form.objectsto_secret_key" placeholder="AccessKey Secret" show-password />
+                    <el-input v-model="form.secret_key" placeholder="AccessKey Secret" show-password />
                 </el-form-item>
                 <el-form-item label="Bucket 名称">
-                    <el-input v-model="form.objectsto_bucket_name" placeholder="如 mall-images" />
+                    <el-input v-model="form.bucket_name" placeholder="如 mall-images" />
                 </el-form-item>
                 <el-form-item label="Region">
-                    <el-input v-model="form.objectsto_region" placeholder="如 us-east-1" />
+                    <el-input v-model="form.region" placeholder="如 us-east-1" />
                     <span class="form-tip">S3 Region，默认为 us-east-1</span>
                 </el-form-item>
                 <el-form-item label="公网访问地址">
-                    <el-input v-model="form.objectsto_public_endpoint" placeholder="如 http://82.156.225.136:9000/mall-images" />
+                    <el-input v-model="form.public_endpoint" placeholder="如 http://82.156.225.136:9000/mall-images" />
                     <span class="form-tip">前端访问图片的公网地址前缀，留空则使用 Endpoint</span>
-                </el-form-item>
-                <el-form-item>
-                    <el-button type="primary" :loading="saving" @click="handleSave">保存配置</el-button>
-                    <el-button @click="handleReset">恢复默认</el-button>
                 </el-form-item>
             </el-form>
         </el-card>
@@ -67,6 +63,7 @@
                 </el-form-item>
                 <el-form-item>
                     <el-button type="primary" :loading="saving" @click="handleSave">保存配置</el-button>
+                    <el-button @click="handleReset">恢复默认</el-button>
                 </el-form-item>
             </el-form>
         </el-card>
@@ -77,18 +74,18 @@
 import { reactive, ref, onMounted } from 'vue'
 import { Connection } from '@element-plus/icons-vue'
 import { toast } from '~/composables/util'
-import { getSetting, saveSetting, testConnection } from '~/api/setting'
+import { getStorageSetting, saveStorageSetting, testConnection } from '~/api/setting'
 
 const saving = ref(false)
 const testing = ref(false)
 
 const defaultForm = {
-    objectsto_endpoint: 'http://127.0.0.1:9000',
-    objectsto_access_key: '',
-    objectsto_secret_key: '',
-    objectsto_bucket_name: 'mall-images',
-    objectsto_region: 'us-east-1',
-    objectsto_public_endpoint: 'http://127.0.0.1:9000',
+    endpoint: 'http://127.0.0.1:9000',
+    access_key: '',
+    secret_key: '',
+    bucket_name: 'mall-images',
+    region: 'us-east-1',
+    public_endpoint: 'http://127.0.0.1:9000',
     upload_max_size: 10,
     upload_allowed_types: 'jpg,jpeg,png,gif,webp,bmp',
 }
@@ -97,7 +94,7 @@ const form = reactive({ ...defaultForm })
 
 async function loadSetting() {
     try {
-        const data = await getSetting()
+        const data = await getStorageSetting()
         if (data) {
             Object.keys(form).forEach(key => {
                 if (data[key] !== undefined && data[key] !== null) {
@@ -113,7 +110,7 @@ async function loadSetting() {
 async function handleSave() {
     saving.value = true
     try {
-        await saveSetting({ ...form })
+        await saveStorageSetting({ ...form })
         toast('保存成功', 'success')
     } catch {
         toast('保存失败，请稍后重试', 'error')
@@ -133,7 +130,7 @@ async function handleTestConnection() {
     testing.value = true
     try {
         // 先保存当前配置，确保后端使用最新配置
-        await saveSetting({ ...form })
+        await saveStorageSetting({ ...form })
 
         // 调用后端测试连接
         const res = await testConnection()

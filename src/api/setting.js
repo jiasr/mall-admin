@@ -12,6 +12,18 @@ export function saveSetting(data) {
     return axios.post('/v1/admin/setting/save', data)
 }
 
+// ========== 对象存储配置 API（独立表） ==========
+
+// 获取存储配置
+export function getStorageSetting() {
+    return axios.get('/v1/admin/storage/get')
+}
+
+// 保存存储配置
+export function saveStorageSetting(data) {
+    return axios.post('/v1/admin/storage/save', data)
+}
+
 // ========== 图片上传 API ==========
 
 // 获取上传凭证
