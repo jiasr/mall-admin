@@ -171,6 +171,7 @@
                 </el-divider>
 
                 <el-form-item label="">
+                    <div class="sku-table-wrap">
                     <el-table :data="form.skus" border size="small" style="width: 100%">
                         <el-table-column label="SKU编码" width="160">
                             <template #default="scope">
@@ -232,6 +233,7 @@
                             </template>
                         </el-table-column>
                     </el-table>
+                    </div>
                 </el-form-item>
 
                 <!-- ====== 标签 ====== -->
@@ -618,10 +620,12 @@ onActivated(() => {
     flex-direction: column;
     gap: 16px;
     padding-bottom: 80px;
+    overflow-x: hidden;
 }
 
 .main-card {
     border: none;
+    overflow-x: hidden;
 }
 
 .divider-title {
@@ -671,6 +675,12 @@ onActivated(() => {
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-wrap: wrap;
+}
+
+.sku-table-wrap {
+    overflow-x: auto;
+    max-width: 100%;
 }
 
 .image-preview {

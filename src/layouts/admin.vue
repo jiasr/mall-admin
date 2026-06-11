@@ -8,7 +8,6 @@
                 <f-menu></f-menu>
             </el-aside>
             <el-main>
-                <f-tag-list />
                 <router-view v-slot="{ Component }">
                     <transition name="fade">
                         <keep-alive :max="10">
@@ -23,11 +22,14 @@
 <script setup>
 import FHeader from './components/FHeader.vue';
 import FMenu from './components/FMenu.vue';
-import FTagList from './components/FTagList.vue';
 </script>
 <style>
 .el-aside {
     transition: all 0.2s;
+}
+
+.el-main {
+    overflow-x: hidden;
 }
 
 .fade-enter-from {
