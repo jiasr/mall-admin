@@ -20,10 +20,12 @@
                             accept="image/*"
                             :before-upload="() => false"
                             @change="handleLogoChange"
+                            drag
                         >
-                            <el-icon :size="28"><Plus /></el-icon>
+                            <el-icon :size="24"><UploadFilled /></el-icon>
+                            <span style="font-size:12px;color:#909399">拖拽上传</span>
                         </el-upload>
-                        <span class="upload-tip">点击上传，建议尺寸 200x60</span>
+                        <span class="upload-tip">建议尺寸 200x60</span>
                     </div>
                 </el-form-item>
                 <el-form-item label="客服电话">
@@ -159,6 +161,20 @@ onMounted(() => {
     width: 64px;
     height: 64px;
     transition: border-color 0.2s;
+}
+
+.avatar-uploader .el-upload-dragger {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+    width: 64px;
+    height: 64px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
 }
 
 .avatar-uploader:hover {

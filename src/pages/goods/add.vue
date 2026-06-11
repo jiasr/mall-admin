@@ -49,7 +49,7 @@
                         <div class="image-preview" v-if="form.primaryImage">
                             <el-image :src="form.primaryImage" fit="contain" style="width:80px;height:80px" />
                         </div>
-                        <el-input v-model="form.primaryImage" placeholder="输入主图URL或点击上传" style="width: 350px" />
+                        <el-input v-model="form.primaryImage" placeholder="输入图片URL或拖拽上传" style="width: 350px" />
                         <el-upload
                             class="inline-upload"
                             action="#"
@@ -58,8 +58,10 @@
                             accept="image/*"
                             :before-upload="() => false"
                             @change="(file) => handleFileUpload(file, 'primaryImage', 'product')"
+                            drag
                         >
-                            <el-button type="primary" :icon="Upload" plain size="small" :loading="imageUploading">上传</el-button>
+                            <el-icon :size="16"><UploadFilled /></el-icon>
+                            <span style="font-size:12px;margin-left:4px">拖拽上传</span>
                         </el-upload>
                         <span class="tip">建议尺寸 750x750</span>
                     </div>
@@ -72,17 +74,18 @@
                                 <el-image :src="url" fit="contain" style="width:60px;height:60px" />
                             </div>
                             <el-input v-model="form.images[i]" placeholder="输入图片URL或点击上传" style="width: 350px" />
-                            <el-upload
-                                class="inline-upload"
-                                action="#"
-                                :show-file-list="false"
-                                :auto-upload="false"
-                                accept="image/*"
-                                :before-upload="() => false"
-                                @change="(file) => handleImageSlotUpload(file, i, 'images', 'product')"
-                            >
-                                <el-button type="primary" :icon="Upload" plain size="small" circle :loading="imageUploading" />
-                            </el-upload>
+                        <el-upload
+                            class="inline-upload"
+                            action="#"
+                            :show-file-list="false"
+                            :auto-upload="false"
+                            accept="image/*"
+                            :before-upload="() => false"
+                            @change="(file) => handleImageSlotUpload(file, i, 'images', 'product')"
+                            drag
+                        >
+                            <el-icon :size="14"><UploadFilled /></el-icon>
+                        </el-upload>
                             <el-button type="danger" :icon="Delete" circle size="small" @click="removeImage(i)" />
                         </div>
                         <el-button type="primary" :icon="Plus" plain size="small" @click="addImage">添加轮播图</el-button>
@@ -96,17 +99,18 @@
                                 <el-image :src="url" fit="contain" style="width:60px;height:60px" />
                             </div>
                             <el-input v-model="form.desc[i]" placeholder="输入详情图URL或点击上传" style="width: 350px" />
-                            <el-upload
-                                class="inline-upload"
-                                action="#"
-                                :show-file-list="false"
-                                :auto-upload="false"
-                                accept="image/*"
-                                :before-upload="() => false"
-                                @change="(file) => handleImageSlotUpload(file, i, 'desc', 'product')"
-                            >
-                                <el-button type="primary" :icon="Upload" plain size="small" circle :loading="imageUploading" />
-                            </el-upload>
+                        <el-upload
+                            class="inline-upload"
+                            action="#"
+                            :show-file-list="false"
+                            :auto-upload="false"
+                            accept="image/*"
+                            :before-upload="() => false"
+                            @change="(file) => handleImageSlotUpload(file, i, 'desc', 'product')"
+                            drag
+                        >
+                            <el-icon :size="14"><UploadFilled /></el-icon>
+                        </el-upload>
                             <el-button type="danger" :icon="Delete" circle size="small" @click="removeDesc(i)" />
                         </div>
                         <el-button type="primary" :icon="Plus" plain size="small" @click="addDesc">添加详情图</el-button>
@@ -626,6 +630,24 @@ onMounted(async () => {
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
+}
+
+/* 行内拖拽上传区域 - 压缩尺寸 */
+.image-upload-row .inline-upload .el-upload-dragger {
+    padding: 6px 10px;
+    height: auto;
+    min-height: auto;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.image-upload-row .inline-upload .el-upload-dragger:hover {
+    border-color: #409eff;
+}
+
+.image-upload-row .inline-upload .el-upload-dragger .el-icon {
+    margin-bottom: 0;
 }
 
 .images-section {
