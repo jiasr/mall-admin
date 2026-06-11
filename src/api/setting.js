@@ -28,3 +28,8 @@ export function confirmUpload(objectName) {
 export function deleteImage(objectName) {
     return axios.post('/v1/upload/delete', { object_name: objectName })
 }
+
+// 测试存储连接
+export function testConnection() {
+    return axios.post('/v1/upload/test')
+}

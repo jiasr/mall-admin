@@ -17,7 +17,7 @@ import UserList from "~/pages/user/list.vue";
 import AgentList from "~/pages/agent/list.vue";
 import SettingBase from "~/pages/setting/base.vue";
 import SettingRole from "~/pages/setting/role.vue";
-import SettingMinio from "~/pages/setting/minio.vue";
+import SettingObjectsto from "~/pages/setting/objectsto.vue";
 
 /* const routes = [
     {
@@ -174,9 +174,9 @@ const asyncRoutes = [
     },
   },
   {
-    path: "/setting/minio",
-    name: "/setting/minio",
-    component: SettingMinio,
+    path: "/setting/objectsto",
+    name: "/setting/objectsto",
+    component: SettingObjectsto,
     meta: {
       title: "存储配置",
     },
