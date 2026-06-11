@@ -20,12 +20,19 @@
                 </router-view>
             </main>
         </div>
+
+        <!-- 底部版权 -->
+        <footer class="admin-footer">
+            <span>Copyright &copy; {{ year }} Mall Admin. Licensed under MIT.</span>
+        </footer>
     </div>
 </template>
 
 <script setup>
 import FHeader from './components/FHeader.vue';
 import FMenu from './components/FMenu.vue';
+
+const year = new Date().getFullYear()
 </script>
 
 <style>
@@ -66,6 +73,18 @@ import FMenu from './components/FMenu.vue';
     overflow-x: hidden;
     padding: 16px;
     background: #f0f2f5;
+}
+
+.admin-footer {
+    flex-shrink: 0;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: #909399;
+    background: #fff;
+    border-top: 1px solid #e4e7ed;
 }
 
 .fade-enter-from { opacity: 0; }
