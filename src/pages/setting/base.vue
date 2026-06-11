@@ -3,37 +3,43 @@
         <!-- 基础设置 -->
         <el-card shadow="never">
             <template #header>
-                <span class="section-title">基础设置</span>
+                <span class="section-title"><el-icon><Tools /></el-icon> 基础设置</span>
             </template>
-            <el-form :model="form" label-width="120px" style="max-width: 600px">
-                <el-form-item label="商城名称">
-                    <el-input v-model="form.site_name" placeholder="请输入商城名称" />
-                </el-form-item>
-                <el-form-item label="商城Logo">
-                    <div class="logo-upload-area">
-                        <el-avatar v-if="form.logo" :src="form.logo" :size="64" shape="square" />
-                        <el-upload
-                            class="avatar-uploader"
-                            action="#"
-                            :show-file-list="false"
-                            :auto-upload="false"
-                            accept="image/*"
-                            :before-upload="() => false"
-                            @change="handleLogoChange"
-                            drag
-                        >
-                            <el-icon :size="24"><UploadFilled /></el-icon>
-                            <span style="font-size:12px;color:#909399">拖拽上传</span>
-                        </el-upload>
-                        <span class="upload-tip">建议尺寸 200x60</span>
-                    </div>
-                </el-form-item>
-                <el-form-item label="客服电话">
-                    <el-input v-model="form.service_phone" placeholder="请输入客服电话" />
-                </el-form-item>
-                <el-form-item label="客服邮箱">
-                    <el-input v-model="form.service_email" placeholder="请输入客服邮箱" />
-                </el-form-item>
+            <el-form :model="form" label-width="100px">
+                <el-row :gutter="40">
+                    <el-col :span="12">
+                        <el-form-item label="商城名称">
+                            <el-input v-model="form.site_name" placeholder="请输入商城名称" />
+                        </el-form-item>
+                        <el-form-item label="客服电话">
+                            <el-input v-model="form.service_phone" placeholder="请输入客服电话" />
+                        </el-form-item>
+                        <el-form-item label="客服邮箱">
+                            <el-input v-model="form.service_email" placeholder="请输入客服邮箱" />
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="12">
+                        <el-form-item label="商城Logo">
+                            <div class="logo-upload-area">
+                                <el-avatar v-if="form.logo" :src="form.logo" :size="64" shape="square" />
+                                <el-upload
+                                    class="avatar-uploader"
+                                    action="#"
+                                    :show-file-list="false"
+                                    :auto-upload="false"
+                                    accept="image/*"
+                                    :before-upload="() => false"
+                                    @change="handleLogoChange"
+                                    drag
+                                >
+                                    <el-icon :size="24"><UploadFilled /></el-icon>
+                                    <span style="font-size:12px;color:#909399">拖拽上传</span>
+                                </el-upload>
+                                <span class="upload-tip">建议 200x60</span>
+                            </div>
+                        </el-form-item>
+                    </el-col>
+                </el-row>
                 <el-form-item>
                     <el-button type="primary" :loading="saving" @click="handleSave">保存设置</el-button>
                 </el-form-item>
@@ -41,35 +47,42 @@
         </el-card>
 
         <!-- 注册与访问 -->
-        <el-card shadow="never" style="margin-top: 20px">
+        <el-card shadow="never" class="mt-5">
             <template #header>
-                <span class="section-title">注册与访问</span>
+                <span class="section-title"><el-icon><Lock /></el-icon> 注册与访问</span>
             </template>
-            <el-form :model="form" label-width="120px" style="max-width: 600px">
-                <el-form-item label="允许注册">
-                    <el-switch v-model="form.allow_register" />
-                    <span class="form-tip">关闭后用户将无法自主注册</span>
-                </el-form-item>
-                <el-form-item label="注册需审核">
-                    <el-switch v-model="form.register_need_audit" />
-                    <span class="form-tip">开启后用户注册需管理员审核</span>
-                </el-form-item>
-                <el-form-item label="启用分销">
-                    <el-switch v-model="form.enable_distribution" />
-                    <span class="form-tip">开启后用户可申请成为分销员</span>
-                </el-form-item>
+            <el-form :model="form" label-width="100px">
+                <el-row :gutter="40">
+                    <el-col :span="8">
+                        <el-form-item label="允许注册">
+                            <el-switch v-model="form.allow_register" />
+                            <span class="form-tip">关闭后用户无法自主注册</span>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                        <el-form-item label="注册需审核">
+                            <el-switch v-model="form.register_need_audit" />
+                            <span class="form-tip">开启后注册需管理员审核</span>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                        <el-form-item label="启用分销">
+                            <el-switch v-model="form.enable_distribution" />
+                            <span class="form-tip">开启后可申请分销员</span>
+                        </el-form-item>
+                    </el-col>
+                </el-row>
                 <el-form-item>
                     <el-button type="primary" :loading="saving" @click="handleSave">保存设置</el-button>
                 </el-form-item>
             </el-form>
         </el-card>
-
     </div>
 </template>
 
 <script setup>
 import { reactive, ref, onMounted } from 'vue'
-import { Plus } from '@element-plus/icons-vue'
+import { UploadFilled, Tools, Lock } from '@element-plus/icons-vue'
 import { toast } from '~/composables/util'
 import { getSetting, saveSetting } from '~/api/setting'
 import { useImageUpload } from '~/composables/useImageUpload'
@@ -78,12 +91,10 @@ const saving = ref(false)
 const { handleUpload } = useImageUpload()
 
 const form = reactive({
-    // 基础设置
     site_name: '',
     logo: '',
     service_phone: '',
     service_email: '',
-    // 注册与访问
     allow_register: true,
     register_need_audit: false,
     enable_distribution: true,
@@ -93,21 +104,17 @@ async function loadSetting() {
     try {
         const data = await getSetting()
         if (data) {
-            // 布尔值从后端返回的是 true/false，直接赋值
             Object.keys(form).forEach(key => {
                 if (data[key] !== undefined) {
                     form[key] = data[key]
                 }
             })
         }
-    } catch {
-        // 后端未提供接口时使用默认值
-    }
+    } catch { /* 使用默认值 */ }
 }
 
 async function handleLogoChange(file) {
     if (!file?.raw) return
-    // 使用 MinIO 上传
     const url = await handleUpload(file.raw, 'system')
     if (url) {
         form.logo = url
@@ -118,9 +125,7 @@ async function handleLogoChange(file) {
 async function handleSave() {
     saving.value = true
     try {
-        // 构建提交数据（转换为后端期望的 snake_case key）
-        const payload = { ...form }
-        await saveSetting(payload)
+        await saveSetting({ ...form })
         toast('保存成功', 'success')
     } catch {
         toast('保存失败，请稍后重试', 'error')
@@ -129,18 +134,21 @@ async function handleSave() {
     }
 }
 
-onMounted(() => {
-    loadSetting()
-})
+onMounted(() => { loadSetting() })
 </script>
 
 <style scoped>
 .setting-page {
-    max-width: 900px;
+    max-width: 960px;
 }
 
+.mt-5 { margin-top: 20px; }
+
 .section-title {
-    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 16px;
     font-weight: 600;
     color: #303133;
 }
@@ -177,9 +185,7 @@ onMounted(() => {
     gap: 2px;
 }
 
-.avatar-uploader:hover {
-    border-color: #409eff;
-}
+.avatar-uploader:hover { border-color: #409eff; }
 
 .upload-tip {
     font-size: 12px;
@@ -187,7 +193,7 @@ onMounted(() => {
 }
 
 .form-tip {
-    margin-left: 12px;
+    margin-left: 10px;
     font-size: 12px;
     color: #909399;
 }
