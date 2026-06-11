@@ -1,13 +1,16 @@
 <template>
-    <el-container>
-        <el-header>
+    <div class="admin-layout">
+        <!-- 顶部 Header -->
+        <header class="admin-header">
             <f-header />
-        </el-header>
-        <el-container>
-            <el-aside :width="$store.state.asideWidth">
+        </header>
+
+        <!-- 下方：左侧菜单 + 右侧内容 -->
+        <div class="admin-body">
+            <aside class="admin-aside" :style="{ width: $store.state.asideWidth }">
                 <f-menu></f-menu>
-            </el-aside>
-            <el-main>
+            </aside>
+            <main class="admin-main">
                 <router-view v-slot="{ Component }">
                     <transition name="fade">
                         <keep-alive :max="10">
@@ -15,45 +18,61 @@
                         </keep-alive>
                     </transition>
                 </router-view>
-            </el-main>
-        </el-container>
-    </el-container>
+            </main>
+        </div>
+    </div>
 </template>
+
 <script setup>
 import FHeader from './components/FHeader.vue';
 import FMenu from './components/FMenu.vue';
 </script>
+
 <style>
-.el-aside {
-    transition: all 0.2s;
+.admin-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
 }
 
-.el-main {
+.admin-header {
+    flex-shrink: 0;
+    height: 60px;
+}
+
+.admin-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.admin-aside {
+    flex-shrink: 0;
+    overflow-y: auto;
     overflow-x: hidden;
+    border-right: 1px solid #e4e7ed;
+    background: #f5f7fa;
+    transition: width 0.2s;
 }
 
-.fade-enter-from {
-    opacity: 0;
+.admin-aside::-webkit-scrollbar {
+    width: 4px;
 }
 
-.fade-enter-to {
-    opacity: 1;
+.admin-main {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px;
+    background: #f0f2f5;
 }
 
-.fade-leave-from {
-    opacity: 1;
-}
-
-.fade-leave-to {
-    opacity: 0;
-}
-
+.fade-enter-from { opacity: 0; }
+.fade-enter-to { opacity: 1; }
+.fade-leave-from { opacity: 1; }
+.fade-leave-to { opacity: 0; }
 .fade-enter-active,
-.fade-leave-active {
-    transition: all .3s;
-}
-
-.fade-enter-active {
-    transition-delay: .3s;
-}
+.fade-leave-active { transition: all .3s; }
+.fade-enter-active { transition-delay: .3s; }
 </style>

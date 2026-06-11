@@ -56,12 +56,9 @@ const handleSelect = (e) => {
 <style>
 .f-menu {
     transition: all 0.3s;
-    top: 64px;
-    bottom: 0;
-    left: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    @apply shadow-md fixed bg-light-50;
+    @apply bg-light-50;
 }
 
 .f-menu::-webkit-scrollbar {

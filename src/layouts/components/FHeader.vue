@@ -98,8 +98,8 @@ const handleRefresh = () => location.reload()
 </script>
 <style>
 .f-header {
-    @apply flex items-center  text-light-50 fixed top-0 left-0 right-0;
-    height: 64px;
+    @apply flex items-center text-light-50;
+    height: 60px;
     background-color: #1b91ff;
 }
 
@@ -111,7 +111,7 @@ const handleRefresh = () => location.reload()
 .icon-btn {
     @apply flex justify-center items-center;
     width: 42px;
-    height: 64px;
+    height: 60px;
     cursor: pointer;
 }
 
@@ -120,7 +120,7 @@ const handleRefresh = () => location.reload()
 }
 
 .f-header .dropdown {
-    height: 64px;
+    height: 60px;
     cursor: pointer;
     @apply flex justify-center items-center mx-5;
 }
