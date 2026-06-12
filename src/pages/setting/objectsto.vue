@@ -28,15 +28,15 @@
                     <el-input v-model="form.region" placeholder="us-east-1" />
                     <span class="form-tip">MinIO / COS / OSS 传 us-east-1，AWS S3 填真实 Region</span>
                 </el-form-item>
-                <el-form-item label="公网地址">
-                    <el-input v-model="form.public_endpoint" placeholder="http://82.156.225.136:9000" />
-                    <span class="form-tip">前端图片访问地址</span>
-                </el-form-item>
                 <el-form-item label="AccessKey ID">
                     <el-input v-model="form.access_key" placeholder="admin" />
                 </el-form-item>
                 <el-form-item label="AccessKey Secret">
                     <el-input v-model="form.secret_key" placeholder="password123" show-password />
+                </el-form-item>
+                <el-form-item label="公网地址">
+                    <el-input v-model="form.public_endpoint" placeholder="http://82.156.225.136:9000" />
+                    <span class="form-tip">前端展示和访问图片的完整 URL 前缀，与 Endpoint 一致即可</span>
                 </el-form-item>
                 <el-form-item>
                     <el-button type="primary" :loading="saving" @click="handleSave">保存配置</el-button>
