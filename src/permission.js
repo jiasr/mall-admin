@@ -32,6 +32,28 @@ router.beforeEach(async (to, from, next) => {
     hasGetInfo = true;
     //动态添加路由
     hasNewRoutes = addRoutes(menus);
+
+    // 加载站点配置（名称+logo）
+    try {
+      const { getSetting, getStorageSetting } = await import('~/api/setting')
+      const [siteData, storageData] = await Promise.all([
+        getSetting(),
+        getStorageSetting(),
+      ])
+      if (siteData) {
+        store.commit('SET_SITE_CONFIG', {
+          site_name: siteData.site_name || '后台管理系统',
+          logo: siteData.logo || '',
+        })
+      }
+      // 存储图片基础URL，用于相对路径转完整URL
+      if (storageData) {
+        const baseUrl = storageData.public_endpoint || storageData.endpoint || ''
+        if (baseUrl) {
+          store.commit('SET_IMAGE_BASE_URL', baseUrl)
+        }
+      }
+    } catch { /* 使用默认值 */ }
   }
 
   // 设置页面标题

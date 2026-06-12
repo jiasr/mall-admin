@@ -88,12 +88,15 @@ export function useImageUpload() {
 
             progress.value = 100
             toast('上传成功', 'success')
-            return res.data.public_url
+            return {
+                url: res.data.public_url,
+                object_name: res.data.object_name,
+            }
 
         } catch (e) {
             console.error('图片上传失败:', e)
             toast('图片上传失败: ' + (e.message || '未知错误'), 'error')
-            return ''
+            return { url: '', object_name: '' }
         } finally {
             uploading.value = false
             progress.value = 0

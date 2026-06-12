@@ -1,10 +1,9 @@
 <template>
     <div class="f-header">
         <span class="logo">
-            <el-icon class="mr-1">
-                <eleme-filled />
-            </el-icon>
-            后台管理系统
+            <el-avatar v-if="$store.state.siteConfig.logo" :src="imgUrl($store.state.siteConfig.logo)" :size="28" shape="square" class="mr-2" />
+            <el-icon v-else class="mr-1"><eleme-filled /></el-icon>
+            {{ $store.state.siteConfig.site_name || '后台管理系统' }}
         </span>
         <el-icon class="icon-btn" @click="$store.commit('handleAsideWidth')">
             <fold v-if="$store.state.asideWidth == '250px'"/>
@@ -61,6 +60,7 @@
 import FormDrawer from '~/components/FormDrawer.vue'
 import { useFullscreen } from '@vueuse/core'
 import { useRepassword,useLogout } from "~/composables/useManager"
+import { imgUrl } from '~/composables/util'
 const {
     // 是否全屏状态
     isFullscreen,

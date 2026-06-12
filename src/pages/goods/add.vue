@@ -337,10 +337,9 @@ const editorConfig = {
     MENU_CONF: {
         uploadImage: {
             async customUpload(file, insertFn) {
-                // 使用 MinIO 上传，上传成功后插入公网 URL
-                const url = await handleUpload(file, 'editor')
-                if (url) {
-                    insertFn(url, file.name, url)
+                const result = await handleUpload(file, 'editor')
+                if (result?.url) {
+                    insertFn(result.url, file.name, result.url)
                 }
             },
         },
@@ -362,25 +361,25 @@ const submitting = ref(false)
 // ====== 图片上传处理 ======
 async function handleFileUpload(file, field, scene) {
     if (!file?.raw) return
-    const url = await handleUpload(file.raw, scene)
-    if (url) {
-        form[field] = url
+    const result = await handleUpload(file.raw, scene)
+    if (result?.url) {
+        form[field] = result.url
     }
 }
 
 async function handleImageSlotUpload(file, index, field, scene) {
     if (!file?.raw) return
-    const url = await handleUpload(file.raw, scene)
-    if (url) {
-        form[field][index] = url
+    const result = await handleUpload(file.raw, scene)
+    if (result?.url) {
+        form[field][index] = result.url
     }
 }
 
 async function handleSkuImageUpload(file, index) {
     if (!file?.raw) return
-    const url = await handleUpload(file.raw, 'product')
-    if (url) {
-        form.skus[index].skuImage = url
+    const result = await handleUpload(file.raw, 'product')
+    if (result?.url) {
+        form.skus[index].skuImage = result.url
     }
 }
 

@@ -16,10 +16,17 @@
                     <el-input v-model="form.service_email" placeholder="请输入客服邮箱" />
                 </el-form-item>
                 <el-form-item label="商城Logo">
-                    <div class="logo-upload-area">
-                        <el-avatar v-if="form.logo" :src="form.logo" :size="64" shape="square" />
+                    <div class="logo-upload-wrap">
+                        <!-- 预览 -->
+                        <div v-if="form.logo" class="logo-preview-box">
+                            <div class="logo-preview-img" :style="{ backgroundImage: 'url(' + imgUrl(form.logo) + ')' }"></div>
+                            <div class="logo-preview-overlay">
+                                <el-button type="danger" :icon="Delete" circle size="small" @click="form.logo = ''" />
+                            </div>
+                        </div>
+                        <!-- 上传区 -->
                         <el-upload
-                            class="avatar-uploader"
+                            class="logo-uploader"
                             action="#"
                             :show-file-list="false"
                             :auto-upload="false"
@@ -28,10 +35,10 @@
                             @change="handleLogoChange"
                             drag
                         >
-                            <el-icon :size="24"><UploadFilled /></el-icon>
-                            <span style="font-size:12px;color:#909399">拖拽上传</span>
+                            <el-icon :size="32"><Plus /></el-icon>
+                            <span class="logo-upload-text">拖拽或点击上传</span>
+                            <span class="logo-upload-hint">建议尺寸 200x60</span>
                         </el-upload>
-                        <span class="upload-tip">建议 200x60</span>
                     </div>
                 </el-form-item>
                 <el-form-item>
@@ -68,11 +75,13 @@
 
 <script setup>
 import { reactive, ref, onMounted } from 'vue'
-import { UploadFilled, Tools, Lock } from '@element-plus/icons-vue'
-import { toast } from '~/composables/util'
+import { useStore } from 'vuex'
+import { Plus, Delete, Tools, Lock } from '@element-plus/icons-vue'
+import { toast, imgUrl } from '~/composables/util'
 import { getSetting, saveSetting } from '~/api/setting'
 import { useImageUpload } from '~/composables/useImageUpload'
 
+const store = useStore()
 const saving = ref(false)
 const { handleUpload } = useImageUpload()
 
@@ -101,10 +110,22 @@ async function loadSetting() {
 
 async function handleLogoChange(file) {
     if (!file?.raw) return
-    const url = await handleUpload(file.raw, 'system')
-    if (url) {
-        form.logo = url
+    const oldLogo = form.logo
+    const result = await handleUpload(file.raw, 'system')
+    if (result?.url) {
+        form.logo = result.url
         toast('Logo 上传成功', 'success')
+        // 删除旧 Logo
+        if (oldLogo && result.object_name) {
+            try {
+                const { deleteImage } = await import('~/api/setting')
+                // 从旧 URL 提取 object_name
+                const oldKey = oldLogo.startsWith('/') ? oldLogo.split('/').slice(2).join('/') : ''
+                if (oldKey) {
+                    await deleteImage(oldKey)
+                }
+            } catch { /* 旧图删除失败不影响主流程 */ }
+        }
     }
 }
 
@@ -112,6 +133,10 @@ async function handleSave() {
     saving.value = true
     try {
         await saveSetting({ ...form })
+        store.commit('SET_SITE_CONFIG', {
+            site_name: form.site_name || '后台管理系统',
+            logo: form.logo || '',
+        })
         toast('保存成功', 'success')
     } catch {
         toast('保存失败，请稍后重试', 'error')
@@ -139,43 +164,76 @@ onMounted(() => { loadSetting() })
     color: #303133;
 }
 
-.logo-upload-area {
+.logo-upload-wrap {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
 }
 
-.avatar-uploader {
+.logo-preview-box {
+    position: relative;
+    width: 200px;
+    height: 80px;
+    border: 1px solid #dcdfe6;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fafafa;
+}
+
+.logo-preview-img {
+    width: 100%;
+    height: 100%;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center center;
+}
+
+.logo-preview-overlay {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.logo-preview-box:hover .logo-preview-overlay {
+    opacity: 1;
+}
+
+.logo-uploader {
     cursor: pointer;
     border: 1px dashed #dcdfe6;
     border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 64px;
-    height: 64px;
+    width: 200px;
+    height: 80px;
     transition: border-color 0.2s;
+    background: #fafafa;
 }
 
-.avatar-uploader .el-upload-dragger {
+.logo-uploader:hover { border-color: #409eff; }
+
+.logo-uploader .el-upload-dragger {
     border: none;
     border-radius: 0;
     background: transparent;
     padding: 0;
-    width: 64px;
-    height: 64px;
+    width: 200px;
+    height: 80px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 4px;
 }
 
-.avatar-uploader:hover { border-color: #409eff; }
-
-.upload-tip {
+.logo-upload-text {
     font-size: 12px;
-    color: #909399;
+    color: #606266;
+}
+
+.logo-upload-hint {
+    font-size: 11px;
+    color: #c0c4cc;
 }
 
 .form-tip {

@@ -1,5 +1,6 @@
 import { createStore } from "vuex";
 import { login, getinfo } from "~/api/manager";
+import { getSetting } from "~/api/setting";
 import { setToken, removeToken } from "~/composables/auth";
 const store = createStore({
   state() {
@@ -9,8 +10,13 @@ const store = createStore({
       user: {},
       // 侧边宽度
       asideWidth: "250px",
+      siteConfig: { site_name: '后台管理系统', logo: '' },
+      imageBaseUrl: '',
       menus: [],
       ruleNames: [],
+      // 网站配置
+      siteName: "后台管理系统",
+      siteLogo: "",
     };
   },
   mutations: {
@@ -27,6 +33,16 @@ const store = createStore({
     },
     SET_RULENAMES(state, ruleNames) {
       state.ruleNames = ruleNames;
+    },
+    SET_SITE_CONFIG(state, config) {
+      state.siteConfig = config;
+    },
+    SET_IMAGE_BASE_URL(state, url) {
+      state.imageBaseUrl = url;
+    },
+    SET_SITE_CONFIG(state, { siteName, logo }) {
+      if (siteName) state.siteName = siteName;
+      if (logo !== undefined) state.siteLogo = logo;
     },
   },
   actions: {
