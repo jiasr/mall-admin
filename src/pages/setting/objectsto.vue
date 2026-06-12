@@ -19,37 +19,49 @@
 
             <el-form :model="form" label-width="120px">
                 <el-row :gutter="40">
-                    <el-col :span="12">
+                    <el-col :xs="24" :sm="12" :xl="8">
                         <el-form-item label="Endpoint">
                             <el-input v-model="form.endpoint" placeholder="http://82.156.225.136:9000" />
                             <span class="form-tip">存储服务地址</span>
                         </el-form-item>
+                    </el-col>
+                    <el-col :xs="24" :sm="12" :xl="8">
                         <el-form-item label="Bucket 名称">
                             <el-input v-model="form.bucket_name" placeholder="mall-images1" />
                         </el-form-item>
+                    </el-col>
+                    <el-col :xs="24" :sm="12" :xl="8">
                         <el-form-item label="Region">
                             <el-input v-model="form.region" placeholder="us-east-1" />
                             <span class="form-tip">默认为 us-east-1</span>
                         </el-form-item>
+                    </el-col>
+                    <el-col :xs="24" :sm="12" :xl="8">
                         <el-form-item label="公网地址">
                             <el-input v-model="form.public_endpoint" placeholder="http://82.156.225.136:9000" />
                             <span class="form-tip">前端访问图片的公网地址</span>
                         </el-form-item>
                     </el-col>
-                    <el-col :span="12">
+                    <el-col :xs="24" :sm="12" :xl="8">
                         <el-form-item label="AccessKey ID">
                             <el-input v-model="form.access_key" placeholder="admin" />
                         </el-form-item>
+                    </el-col>
+                    <el-col :xs="24" :sm="12" :xl="8">
                         <el-form-item label="AccessKey Secret">
                             <el-input v-model="form.secret_key" placeholder="password123" show-password />
                         </el-form-item>
+                    </el-col>
+                    <el-col :xs="24" :sm="12" :xl="6">
                         <el-form-item label="最大文件(MB)">
                             <el-input-number v-model="form.upload_max_size" :min="1" :max="100" :step="1" />
-                            <span class="form-tip">单文件大小限制</span>
+                            <span class="form-tip">大小限制</span>
                         </el-form-item>
+                    </el-col>
+                    <el-col :xs="24" :sm="12" :xl="18">
                         <el-form-item label="允许类型">
                             <el-input v-model="form.upload_allowed_types" placeholder="jpg,jpeg,png,gif,webp,bmp" />
-                            <span class="form-tip">逗号分隔的扩展名</span>
+                            <span class="form-tip">逗号分隔扩展名</span>
                         </el-form-item>
                     </el-col>
                 </el-row>
@@ -136,7 +148,7 @@ onMounted(() => { loadSetting() })
 
 <style scoped>
 .storage-setting-page {
-    max-width: 960px;
+    max-width: 1200px;
 }
 
 .mb-5 { margin-bottom: 20px; }
@@ -160,6 +172,5 @@ onMounted(() => { loadSetting() })
     margin-left: 10px;
     font-size: 12px;
     color: #909399;
-    white-space: nowrap;
 }
 </style>
