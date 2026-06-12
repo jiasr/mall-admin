@@ -39,14 +39,7 @@
                 <el-form-item label="AccessKey Secret">
                     <el-input v-model="form.secret_key" placeholder="password123" show-password />
                 </el-form-item>
-                <el-form-item label="最大文件(MB)">
-                    <el-input-number v-model="form.upload_max_size" :min="1" :max="100" :step="1" />
-                    <span class="form-tip">大小限制</span>
-                </el-form-item>
-                <el-form-item label="允许类型">
-                    <el-input v-model="form.upload_allowed_types" placeholder="jpg,jpeg,png,gif,webp,bmp" />
-                    <span class="form-tip">逗号分隔扩展名</span>
-                </el-form-item>
+                
                 <el-form-item>
                     <el-button type="primary" :loading="saving" @click="handleSave">保存配置</el-button>
                     <el-button @click="handleReset">恢复默认</el-button>
@@ -72,8 +65,6 @@ const defaultForm = {
     bucket_name: 'mall-images1',
     region: 'us-east-1',
     public_endpoint: 'http://82.156.225.136:9000',
-    upload_max_size: 10,
-    upload_allowed_types: 'jpg,jpeg,png,gif,webp,bmp',
 }
 
 const form = reactive({ ...defaultForm })
