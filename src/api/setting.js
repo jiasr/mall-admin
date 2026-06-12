@@ -51,7 +51,7 @@ export function proxyUpload(file, scene = 'product') {
     })
 }
 
-// 测试存储连接
-export function testConnection() {
-    return axios.post('/v1/admin/storage/test')
+// 测试存储连接（直接传配置参数，不保存）
+export function testConnection(data) {
+    return axios.post('/v1/admin/storage/test', data)
 }

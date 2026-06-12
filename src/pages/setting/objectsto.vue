@@ -2,12 +2,7 @@
     <div class="storage-setting-page">
         <el-card shadow="never">
             <template #header>
-                <div class="card-header-row">
-                    <span class="section-title"><el-icon><Folder /></el-icon> 对象存储配置</span>
-                    <el-button type="success" :loading="testing" @click="handleTestConnection">
-                        <el-icon><Connection /></el-icon> 测试连接
-                    </el-button>
-                </div>
+                <span class="section-title"><el-icon><Folder /></el-icon> 对象存储配置</span>
             </template>
 
             <el-alert type="info" :closable="false" show-icon class="mb-5">
@@ -40,7 +35,9 @@
                 </el-form-item>
                 <el-form-item>
                     <el-button type="primary" :loading="saving" @click="handleSave">保存配置</el-button>
-                    <el-button @click="handleReset">恢复默认</el-button>
+                    <el-button type="success" :loading="testing" @click="handleTestConnection">
+                        <el-icon><Connection /></el-icon> 测试连接
+                    </el-button>
                 </el-form-item>
             </el-form>
         </el-card>
@@ -56,16 +53,14 @@ import { getStorageSetting, saveStorageSetting, testConnection } from '~/api/set
 const saving = ref(false)
 const testing = ref(false)
 
-const defaultForm = {
-    endpoint: 'http://82.156.225.136:9000',
-    access_key: 'admin',
-    secret_key: 'password123',
-    bucket_name: 'mall-images1',
-    region: 'us-east-1',
-    public_endpoint: 'http://82.156.225.136:9000',
-}
-
-const form = reactive({ ...defaultForm })
+const form = reactive({
+    endpoint: '',
+    access_key: '',
+    secret_key: '',
+    bucket_name: '',
+    region: '',
+    public_endpoint: '',
+})
 
 async function loadSetting() {
     try {
@@ -92,16 +87,10 @@ async function handleSave() {
     }
 }
 
-function handleReset() {
-    Object.keys(defaultForm).forEach(key => { form[key] = defaultForm[key] })
-    toast('已恢复默认值，请点击保存', 'info')
-}
-
 async function handleTestConnection() {
     testing.value = true
     try {
-        await saveStorageSetting({ ...form })
-        const res = await testConnection()
+        const res = await testConnection({ ...form })
         if (res.success) {
             toast('连接成功！', 'success')
         } else {
@@ -127,12 +116,6 @@ onActivated(() => { loadSetting() })
 
 .storage-form {
     max-width: 650px;
-}
-
-.card-header-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
 }
 
 .section-title {
