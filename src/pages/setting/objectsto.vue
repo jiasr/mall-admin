@@ -50,7 +50,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, onMounted, onActivated } from 'vue'
 import { Connection, Folder } from '@element-plus/icons-vue'
 import { toast } from '~/composables/util'
 import { getStorageSetting, saveStorageSetting, testConnection } from '~/api/setting'
@@ -117,6 +117,7 @@ async function handleTestConnection() {
 }
 
 onMounted(() => { loadSetting() })
+onActivated(() => { loadSetting() })
 </script>
 
 <style scoped>
