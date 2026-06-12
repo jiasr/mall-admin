@@ -53,5 +53,5 @@ export function proxyUpload(file, scene = 'product') {
 
 // 测试存储连接
 export function testConnection() {
-    return axios.post('/v1/upload/test')
+    return axios.post('/v1/admin/storage/test')
 }
