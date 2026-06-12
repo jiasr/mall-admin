@@ -2,7 +2,12 @@
     <div class="storage-setting-page">
         <el-card shadow="never">
             <template #header>
-                <span class="section-title"><el-icon><Folder /></el-icon> 对象存储配置</span>
+                <div class="card-header-row">
+                    <span class="section-title"><el-icon><Folder /></el-icon> 对象存储配置</span>
+                    <el-button type="primary" plain @click="$router.push('/setting/storage-files')">
+                        <el-icon><FolderOpened /></el-icon> 文件管理
+                    </el-button>
+                </div>
             </template>
 
             <el-alert type="info" :closable="false" show-icon class="mb-5">
@@ -46,7 +51,7 @@
 
 <script setup>
 import { reactive, ref, onMounted, onActivated } from 'vue'
-import { Connection, Folder } from '@element-plus/icons-vue'
+import { Connection, Folder, FolderOpened } from '@element-plus/icons-vue'
 import { toast } from '~/composables/util'
 import { getStorageSetting, saveStorageSetting, testConnection } from '~/api/setting'
 
@@ -116,6 +121,12 @@ onActivated(() => { loadSetting() })
 
 .storage-form {
     max-width: 650px;
+}
+
+.card-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .section-title {

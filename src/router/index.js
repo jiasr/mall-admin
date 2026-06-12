@@ -18,6 +18,7 @@ import AgentList from "~/pages/agent/list.vue";
 import SettingBase from "~/pages/setting/base.vue";
 import SettingRole from "~/pages/setting/role.vue";
 import SettingObjectsto from "~/pages/setting/objectsto.vue";
+import SettingFiles from "~/pages/setting/files.vue";
 
 /* const routes = [
     {
@@ -179,6 +180,14 @@ const asyncRoutes = [
     component: SettingObjectsto,
     meta: {
       title: "存储配置",
+    },
+  },
+  {
+    path: "/setting/storage-files",
+    name: "/setting/storage-files",
+    component: SettingFiles,
+    meta: {
+      title: "文件管理",
     },
   },
 ];
