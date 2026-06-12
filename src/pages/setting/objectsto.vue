@@ -27,7 +27,7 @@
                 </el-form-item>
                 <el-form-item label="Region">
                     <el-input v-model="form.region" placeholder="us-east-1" />
-                    <span class="form-tip">默认为 us-east-1</span>
+                    <span class="form-tip">S3 地域标识，MinIO/COS/OSS 传 us-east-1 即可；仅 AWS S3 需填写真实 Region</span>
                 </el-form-item>
                 <el-form-item label="公网地址">
                     <el-input v-model="form.public_endpoint" placeholder="http://82.156.225.136:9000" />
