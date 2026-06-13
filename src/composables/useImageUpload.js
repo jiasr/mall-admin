@@ -79,19 +79,33 @@ export function useImageUpload() {
                 console.log(`图片已压缩: ${(file.size / 1024).toFixed(0)}KB -> ${(compressed.size / 1024).toFixed(0)}KB`)
             }
 
-            // 2. 上传到后端（后端转存 MinIO）
-            const res = await proxyUpload(compressed, scene)
+            // 2. 上传到后端（后端转存 MinIO），带进度
+            const uploadPromise = proxyUpload(compressed, scene, (e) => {
+                if (e.total) {
+                    progress.value = Math.round((e.loaded / e.total) * 100)
+                }
+            })
 
-            if (!res?.success || !res?.data?.public_url) {
-                throw new Error(res?.message || '上传失败')
+            // 同时更新模拟进度（防止进度条卡住）
+            const simInterval = setInterval(() => {
+                if (progress.value < 90) progress.value += 5
+            }, 300)
+
+            const res = await uploadPromise
+            clearInterval(simInterval)
+
+            console.log('[upload] raw res.data:', JSON.stringify(res?.data))
+            const inner = res?.data?.data || res?.data || {}
+            const publicUrl = inner.public_url
+            const objectName = inner.object_name
+            if (!publicUrl) {
+                console.error('[upload] public_url 为空, res.data:', res?.data)
+                throw new Error(inner.message || '上传失败')
             }
 
             progress.value = 100
             toast('上传成功', 'success')
-            return {
-                url: res.data.public_url,
-                object_name: res.data.object_name,
-            }
+            return { url: publicUrl, object_name: objectName }
 
         } catch (e) {
             console.error('图片上传失败:', e)

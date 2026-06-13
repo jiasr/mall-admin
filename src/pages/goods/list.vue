@@ -107,12 +107,6 @@
                             </template>
                         </el-table-column>
 
-                        <el-table-column label="划线价" width="120" align="center">
-                            <template #default="scope">
-                                <span class="line-price">¥{{ ((scope.row.originPrice || scope.row.maxLinePrice) / 100).toFixed(2) }}</span>
-                            </template>
-                        </el-table-column>
-
                         <el-table-column label="状态" width="80" align="center">
                             <template #default="scope">
                                 <el-tag v-if="scope.row.isPutOnSale !== 0" type="success" size="small">上架</el-tag>
@@ -218,6 +212,9 @@
                         </template>
                     </el-table-column>
                 </el-table>
+
+                <h4 class="sku-title" v-if="currentGoods.detailContent">商品详情</h4>
+                <div class="detail-content" v-if="currentGoods.detailContent" v-html="currentGoods.detailContent"></div>
             </template>
         </el-drawer>
     </div>
@@ -557,12 +554,6 @@ onActivated(() => {
     font-weight: 600;
 }
 
-.line-price {
-    color: #909399;
-    text-decoration: line-through;
-    font-size: 12px;
-}
-
 .pagination {
     display: flex;
     justify-content: flex-end;
@@ -590,5 +581,22 @@ onActivated(() => {
 
 .mr-1 {
     margin-right: 4px;
+}
+
+.detail-content {
+    padding: 12px;
+    background: #fafafa;
+    border-radius: 6px;
+    border: 1px solid #ebeef5;
+    max-height: 400px;
+    overflow-y: auto;
+    line-height: 1.7;
+    font-size: 14px;
+    color: #333;
+}
+
+.detail-content :deep(img) {
+    max-width: 100%;
+    height: auto;
 }
 </style>

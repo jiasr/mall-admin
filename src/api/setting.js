@@ -42,12 +42,13 @@ export function deleteImage(objectName) {
 }
 
 // 服务端代理上传（文件发后端，后端转存 MinIO）
-export function proxyUpload(file, scene = 'product') {
+export function proxyUpload(file, scene = 'product', onProgress = null) {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('scene', scene)
     return axios.post('/v1/upload/file', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        ...(onProgress ? { onUploadProgress: onProgress } : {}),
     })
 }
 
