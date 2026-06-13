@@ -5,7 +5,7 @@
             <template #header>
                 <span class="section-title"><el-icon><Tools /></el-icon> 基础设置</span>
             </template>
-            <el-form :model="form" label-width="100px" style="max-width: 600px">
+            <el-form :model="form" label-width="100px" class="setting-form">
                 <el-form-item label="商城名称">
                     <el-input v-model="form.site_name" placeholder="请输入商城名称" />
                 </el-form-item>
@@ -52,7 +52,7 @@
             <template #header>
                 <span class="section-title"><el-icon><Lock /></el-icon> 注册与访问</span>
             </template>
-            <el-form :model="form" label-width="100px" style="max-width: 600px">
+            <el-form :model="form" label-width="100px" class="setting-form">
                 <el-form-item label="允许注册">
                     <el-switch v-model="form.allow_register" />
                     <span class="form-tip">关闭后用户无法自主注册</span>
@@ -150,7 +150,11 @@ onMounted(() => { loadSetting() })
 
 <style scoped>
 .setting-page {
-    max-width: 800px;
+    max-width: 100%;
+}
+
+.setting-form {
+    max-width: 650px;
 }
 
 .mt-5 { margin-top: 20px; }

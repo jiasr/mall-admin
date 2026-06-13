@@ -16,7 +16,7 @@
                 </template>
             </el-alert>
 
-            <el-form :model="form" label-width="150px" class="storage-form">
+            <el-form :model="form" label-width="150px" class="storage-form" style="max-width: 650px">
                 <el-form-item label="Endpoint">
                     <el-input v-model="form.endpoint" placeholder="http://82.156.225.136:9000" />
                     <span class="form-tip">存储服务地址</span>
@@ -114,7 +114,7 @@ onActivated(() => { loadSetting() })
 
 <style scoped>
 .storage-setting-page {
-    max-width: 900px;
+    max-width: 100%;
 }
 
 .mb-5 { margin-bottom: 20px; }

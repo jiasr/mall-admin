@@ -40,7 +40,10 @@
                                 <span v-else>{{ p }}</span>
                             </el-breadcrumb-item>
                         </el-breadcrumb>
-                        <span class="file-count" v-if="!loading">{{ files.length }} 个文件</span>
+                        <div class="toolbar-actions">
+                            <span v-if="currentPrefix" class="current-path">{{ currentPrefix }}</span>
+                            <span class="file-count" v-if="!loading">{{ files.length }} 个文件</span>
+                        </div>
                     </div>
 
                     <div v-if="subfolders.length > 0" class="subfolder-bar">
@@ -50,29 +53,26 @@
                         </div>
                     </div>
 
-                    <el-table v-if="files.length > 0" :data="files" stripe size="small" style="width: 100%" @row-click="handlePreview">
-                        <el-table-column label="文件名" min-width="280">
-                            <template #default="scope">
-                                <div class="file-cell">
-                                    <el-icon><component :is="getFileIcon(scope.row.key)" /></el-icon>
-                                    <span>{{ getFileName(scope.row.key) }}</span>
-                                </div>
-                            </template>
-                        </el-table-column>
-                        <el-table-column label="大小" width="120">
-                            <template #default="scope">{{ formatSize(scope.row.size) }}</template>
-                        </el-table-column>
-                        <el-table-column label="修改时间" width="180">
-                            <template #default="scope">{{ scope.row.last_modified }}</template>
-                        </el-table-column>
-                        <el-table-column label="操作" width="100">
-                            <template #default="scope">
-                                <el-button type="danger" size="small" :icon="Delete" circle @click.stop="handleDelete(scope.row.key)" />
-                            </template>
-                        </el-table-column>
+                    <div class="table-wrap">
+                        <el-table v-show="files.length > 0" :data="files" stripe size="small" style="width: 100%" @row-click="handlePreview">
+                            <el-table-column label="文件名" min-width="280">
+                                <template #default="scope">
+                                    <div class="file-cell">
+                                        <el-icon><component :is="getFileIcon(scope.row.key)" /></el-icon>
+                                        <span>{{ getFileName(scope.row.key) }}</span>
+                                    </div>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="大小" width="120">
+                                <template #default="scope">{{ formatSize(scope.row.size) }}</template>
+                            </el-table-column>
+                            <el-table-column label="修改时间" width="180">
+                                <template #default="scope">{{ scope.row.last_modified }}</template>
+                            </el-table-column>
                     </el-table>
 
-                    <el-empty v-if="!loading && subfolders.length === 0 && files.length === 0" description="此文件夹为空" />
+                        <el-empty v-show="!loading && subfolders.length === 0 && files.length === 0" description="此文件夹为空" />
+                    </div>
                 </div>
             </div>
         </el-card>
@@ -93,8 +93,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { FolderOpened, Folder, Document, PictureFilled, VideoCamera, Delete } from '@element-plus/icons-vue'
+import { ref, computed, onMounted, onActivated } from 'vue'
+import { FolderOpened, Folder, Document, PictureFilled, VideoCamera } from '@element-plus/icons-vue'
 import { toast } from '~/composables/util'
 import axios from '~/axios'
 
@@ -187,6 +187,7 @@ async function browse(prefix) {
         // 丢弃过期响应（用户已切换到其他目录）
         if (tick !== _browseTick) return
         if (res?.success) {
+            console.log('browse result:', currentPrefix.value, res.data.files?.length, 'files')
             files.value = res.data.files || []
             subfolders.value = res.data.folders || []
         }
@@ -196,7 +197,9 @@ async function browse(prefix) {
     }
 }
 
-function handleNodeClick(data) { browse(data.prefix) }
+function handleNodeClick(data) {
+    if (data?.prefix !== undefined) browse(data.prefix)
+}
 
 // ====== Preview ======
 const previewVisible = ref(false)
@@ -219,20 +222,14 @@ function openInNewTab() {
     window.open(previewUrl.value, '_blank')
 }
 
-// ====== Delete ======
-async function handleDelete(key) {
-    try {
-        const res = await axios.post('/v1/admin/storage/files/delete', { key })
-        if (res?.success) {
-            toast('删除成功', 'success')
-            browse(currentPrefix.value)
-        } else { toast(res?.message || '删除失败', 'error') }
-    } catch { toast('删除失败', 'error') }
-}
+// ====== (上传/删除功能已移除，仅用于浏览) ======
 
 onMounted(async () => {
     await loadBaseUrl()
     browse('')
+})
+onActivated(() => {
+    browse(currentPrefix.value)
 })
 </script>
 
@@ -270,6 +267,7 @@ onMounted(async () => {
 }
 
 .file-count { font-size: 12px; color: #909399; }
+.current-path { font-size: 12px; color: #909399; margin-right: 8px; }
 
 .subfolder-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
 
