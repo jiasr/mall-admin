@@ -174,11 +174,6 @@
                                 <el-input-number v-model="scope.row.price" :min="0" :step="100" size="small" controls-position="right" style="width: 100%" />
                             </template>
                         </el-table-column>
-                        <el-table-column label="划线价(分)" width="130">
-                            <template #default="scope">
-                                <el-input-number v-model="scope.row.linePrice" :min="0" :step="100" size="small" controls-position="right" style="width: 100%" />
-                            </template>
-                        </el-table-column>
                         <el-table-column label="库存" width="100">
                             <template #default="scope">
                                 <el-input-number v-model="scope.row.stockQuantity" :min="0" size="small" controls-position="right" style="width: 100%" />
@@ -389,7 +384,6 @@ function autoGenerateSkus() {
         skuId: randomId(),
         skuImage: '',
         price: 0,
-        linePrice: 0,
         stockQuantity: 0,
         specInfo: combo.map((v, idx) => ({
             specId: specs[idx].title,
@@ -447,7 +441,6 @@ async function handleSubmit() {
                 skuId: s.skuId,
                 skuImage: s.skuImage,
                 price: s.price,
-                linePrice: s.linePrice,
                 stockQuantity: s.stockQuantity,
                 specInfo: s.specInfo,
             })),
@@ -539,7 +532,6 @@ onMounted(async () => {
                         skuId: s.skuId || randomId(),
                         skuImage: s.skuImage || '',
                         price: (s.priceInfo && s.priceInfo[0]?.price) || 0,
-                        linePrice: (s.priceInfo && s.priceInfo[0]?.linePrice) || 0,
                         stockQuantity: (s.stockInfo && s.stockInfo.stockQuantity) || 0,
                         specInfo: s.specInfo || [],
                     }))
