@@ -11,10 +11,6 @@
                     <el-input v-model="form.title" placeholder="请输入商品标题" maxlength="500" show-word-limit />
                 </el-form-item>
 
-                <el-form-item label="英文标题">
-                    <el-input v-model="form.etitle" placeholder="英文标题（选填）" maxlength="500" />
-                </el-form-item>
-
                 <el-row :gutter="20">
                     <el-col :span="12">
                         <el-form-item label="商品分类">
@@ -261,7 +257,6 @@ const editSpuId = ref(null)
 
 const form = reactive({
     title: '',
-    etitle: '',
     categoryId: null,
     isPutOnSale: 0,
     images: [],
@@ -427,7 +422,6 @@ async function handleSubmit() {
     try {
         const payload = {
             title: form.title,
-            etitle: form.etitle,
             categoryId: form.categoryId,
             isPutOnSale: form.isPutOnSale,
             images: form.images.filter(u => u.trim()),
@@ -500,7 +494,6 @@ onMounted(async () => {
             const data = await getGoodsDetail(spuId)
             if (data) {
                 form.title = data.title || ''
-                form.etitle = data.etitle || ''
                 form.categoryId = data.categoryId || null
                 form.isPutOnSale = data.isPutOnSale ?? 0
                 // 合并 primaryImage + images 到统一数组，第一张是主图
