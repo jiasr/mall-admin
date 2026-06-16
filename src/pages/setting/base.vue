@@ -71,31 +71,6 @@
             </el-form>
         </el-card>
 
-        <!-- 微信支付配置 -->
-        <el-card shadow="never" class="mt-5">
-            <template #header>
-                <span class="section-title"><el-icon><Tools /></el-icon> 微信支付配置</span>
-            </template>
-            <el-form :model="form" label-width="140px" class="setting-form">
-                <el-form-item label="小程序AppID">
-                    <el-input v-model="form.wechat_app_id" placeholder="微信公众平台 → 开发 → 基本配置" />
-                </el-form-item>
-                <el-form-item label="商户号">
-                    <el-input v-model="form.wechat_mch_id" placeholder="微信商户平台 → 账户中心" />
-                </el-form-item>
-                <el-form-item label="API密钥">
-                    <el-input v-model="form.wechat_mch_key" placeholder="微信商户平台 → API安全 → 设置密钥" show-password />
-                </el-form-item>
-                <el-form-item label="支付回调URL">
-                    <el-input v-model="form.wechat_notify_url" placeholder="http://域名/v1/order/pay/notify" />
-                    <span class="form-tip">需配置公网可访问的地址</span>
-                </el-form-item>
-                <el-form-item>
-                    <el-button type="primary" :loading="saving" @click="handleSave">保存设置</el-button>
-                    <el-tag type="info" style="margin-left: 12px;">支付配置保存后需重启后端生效</el-tag>
-                </el-form-item>
-            </el-form>
-        </el-card>
     </div>
 </template>
 
@@ -119,10 +94,6 @@ const form = reactive({
     allow_register: true,
     register_need_audit: false,
     enable_distribution: true,
-    wechat_app_id: '',
-    wechat_mch_id: '',
-    wechat_mch_key: '',
-    wechat_notify_url: '',
 })
 
 async function loadSetting() {
