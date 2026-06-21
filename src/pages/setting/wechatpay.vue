@@ -27,11 +27,9 @@
                 </el-form-item>
                 <el-form-item label="APIv3 私钥(PEM)">
                     <el-input v-model="form.private_key" type="textarea" :rows="4" placeholder="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----" />
-                    <span class="form-tip">商户平台 → 证书管理 → 下载证书后解压获取，或放在项目根目录</span>
                 </el-form-item>
                 <el-form-item label="证书序列号">
                     <el-input v-model="form.cert_serial_no" placeholder="从证书文件中提取的序列号" />
-                    <span class="form-tip">也可将 apiclient_cert.pem 放项目根目录自动提取</span>
                 </el-form-item>
                 <el-form-item label="当前环境">
                     <el-tag type="warning">沙箱环境</el-tag>
