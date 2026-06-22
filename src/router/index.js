@@ -9,6 +9,8 @@ import GoodsAdd from "~/pages/goods/add.vue";
 import CategoryList from "~/pages/category/list.vue";
 import SpecList from "~/pages/spec/list.vue";
 import CouponList from "~/pages/coupon/list.vue";
+import FreightList from "~/pages/freight/list.vue";
+import FreightAdd from "~/pages/freight/add.vue";
 import GrouponList from "~/pages/groupon/list.vue";
 import GrouponAdd from "~/pages/groupon/add.vue";
 import GrouponOrder from "~/pages/groupon/order.vue";
@@ -109,6 +111,22 @@ const asyncRoutes = [
     component: CouponList,
     meta: {
       title: "优惠券管理",
+    },
+  },
+  {
+    path: "/freight/list",
+    name: "/freight/list",
+    component: FreightList,
+    meta: {
+      title: "运费模板",
+    },
+  },
+  {
+    path: "/freight/add",
+    name: "/freight/add",
+    component: FreightAdd,
+    meta: {
+      title: "添加运费模板",
     },
   },
   {
