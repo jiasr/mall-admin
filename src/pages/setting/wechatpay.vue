@@ -16,20 +16,25 @@
                     <el-input v-model="form.app_id" placeholder="微信公众平台 → 开发 → 基本配置" />
                 </el-form-item>
                 <el-form-item label="商户号 (MchID)">
-                    <el-input v-model="form.mch_id" placeholder="微信商户平台 → 账户中心" />
+                    <el-input v-model="form.mch_id" placeholder="微信商户平台 → 账户中心" autocomplete="off" />
                 </el-form-item>
                 <el-form-item label="APIv3 密钥">
-                    <el-input v-model="form.mch_key" placeholder="微信商户平台 → API安全 → 设置密钥" show-password />
+                    <el-input v-model="form.mch_key" placeholder="微信商户平台 → API安全 → 设置密钥" show-password autocomplete="new-password" />
                 </el-form-item>
                 <el-form-item label="支付回调 URL">
                     <el-input v-model="form.notify_url" placeholder="https://域名/v1/order/pay/notify" />
                     <span class="form-tip">需公网可访问，用于接收微信支付结果通知</span>
                 </el-form-item>
                 <el-form-item label="APIv3 私钥(PEM)">
-                    <el-input v-model="form.private_key" type="textarea" :rows="4" placeholder="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----" />
+                    <el-input v-model="form.wechat_private_key" type="textarea" :rows="4" placeholder="对应文件下载包中的 apiclient_key.pem&#10;用记事本打开后全选复制粘贴即可" />
+                </el-form-item>
+                <el-form-item label="商户证书(PEM)">
+                    <el-input v-model="form.wechat_certificate" type="textarea" :rows="4" placeholder="对应文件下载包中的 apiclient_cert.pem&#10;用记事本打开后全选复制粘贴即可" />
+                    <span class="form-tip">保存后系统自动提取证书序列号，无需手动填写</span>
                 </el-form-item>
                 <el-form-item label="证书序列号">
-                    <el-input v-model="form.cert_serial_no" placeholder="从证书文件中提取的序列号" />
+                    <el-input v-model="form.wechat_cert_serial_no" disabled placeholder="保存证书后自动生成" />
+                    <span class="form-tip">自动提取，不可编辑</span>
                 </el-form-item>
                 <el-form-item label="当前环境">
                     <el-tag type="warning">沙箱环境</el-tag>
@@ -57,17 +62,18 @@ const form = reactive({
     mch_id: '',
     mch_key: '',
     notify_url: '',
-    private_key: '',
-    cert_serial_no: '',
+    wechat_private_key: '',
+    wechat_certificate: '',
+    wechat_cert_serial_no: '',
 })
 
 async function loadConfig() {
     try {
         const res = await axios.get('/v1/admin/wechatpay/get')
-        if (res && res.data) {
+        if (res) {
             Object.keys(form).forEach(key => {
-                if (res.data[key] !== undefined) {
-                    form[key] = res.data[key]
+                if (res[key] !== undefined) {
+                    form[key] = res[key]
                 }
             })
         }
