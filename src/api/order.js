@@ -19,3 +19,8 @@ export function processOrder(orderNo, data) {
 export function deleteOrder(orderNo) {
     return axios.post(`/mall/v1/order/admin/delete/${orderNo}`)
 }
+
+// 退款
+export function refundOrder(data) {
+    return axios.post("/mall/v1/order/admin/refund", data)
+}

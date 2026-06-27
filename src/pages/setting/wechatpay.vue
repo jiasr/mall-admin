@@ -37,8 +37,8 @@
                     <span class="form-tip">自动提取，不可编辑</span>
                 </el-form-item>
                 <el-form-item label="当前环境">
-                    <el-tag type="warning">沙箱环境</el-tag>
-                    <span class="form-tip">上架前需切换为正式环境 (api.mch.weixin.qq.com)</span>
+                    <el-tag type="success">正式环境</el-tag>
+                    <span class="form-tip">接口地址: api.mch.weixin.qq.com</span>
                 </el-form-item>
                 <el-form-item>
                     <el-button type="primary" :loading="saving" @click="handleSave">保存配置</el-button>

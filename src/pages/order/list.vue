@@ -114,6 +114,15 @@
                         >
                             <el-icon><Close /></el-icon> 取消
                         </el-button>
+                        <el-button
+                            v-if="scope.row.status === 1"
+                            type="danger"
+                            size="small"
+                            link
+                            @click="handleRefund(scope.row)"
+                        >
+                            <el-icon><Warning /></el-icon> 退款
+                        </el-button>
                         <el-button type="danger" size="small" link @click="handleDelete(scope.row)">
                             <el-icon><Delete /></el-icon> 删除
                         </el-button>
@@ -240,8 +249,8 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { Search, Refresh, Picture, View, Top, Close, Delete } from '@element-plus/icons-vue'
-import { getOrderList, getOrderDetail, processOrder, deleteOrder } from '~/api/order'
+import { Search, Refresh, Picture, View, Top, Close, Delete, Warning } from '@element-plus/icons-vue'
+import { getOrderList, getOrderDetail, processOrder, deleteOrder, refundOrder } from '~/api/order'
 import { toast, showModal } from '~/composables/util'
 
 const loading = ref(false)
@@ -369,29 +378,40 @@ async function handleShipConfirm() {
 
 // 取消订单
 async function handleCancel(row) {
+    const confirmed = await showModal('确定要取消该订单吗？', 'warning', '取消确认').then(() => true).catch(() => false)
+    if (!confirmed) return
     try {
-        await showModal('确定要取消该订单吗？', 'warning', '取消确认')
         await processOrder(row.orderNo, { status: -1 })
         toast('订单已取消', 'success')
         handleSearch()
     } catch (e) {
-        if (e !== 'cancel') {
-            console.error('取消订单失败', e)
-        }
+        console.error('取消订单失败', e)
+    }
+}
+
+// 退款
+async function handleRefund(row) {
+    const confirmed = await showModal('确认退款？退款金额 ' + ((row.payAmount || 0) / 100).toFixed(2) + ' 元将原路返还用户', 'warning', '退款确认').then(() => true).catch(() => false)
+    if (!confirmed) return
+    try {
+        await refundOrder({ orderNo: row.orderNo, reason: '' })
+        toast('退款成功', 'success')
+        handleSearch()
+    } catch (e) {
+        console.error('退款失败', e)
     }
 }
 
 // 删除订单
 async function handleDelete(row) {
+    const confirmed = await showModal('确定要删除该订单吗？此操作不可恢复！', 'error', '删除确认').then(() => true).catch(() => false)
+    if (!confirmed) return
     try {
-        await showModal('确定要删除该订单吗？此操作不可恢复！', 'error', '删除确认')
         await deleteOrder(row.orderNo)
         toast('删除成功', 'success')
         handleSearch()
     } catch (e) {
-        if (e !== 'cancel') {
-            console.error('删除失败', e)
-        }
+        console.error('删除失败', e)
     }
 }
 
