@@ -18,8 +18,8 @@
 
                 <el-form-item label="计费方式" prop="pricing_type">
                     <el-radio-group v-model="form.pricing_type">
-                        <el-radio :value="0">固定运费</el-radio>
-                        <el-radio :value="1">按件收费</el-radio>
+                        <el-radio :label="0">固定运费</el-radio>
+                        <el-radio :label="1">按件收费</el-radio>
                     </el-radio-group>
                     <span class="form-tip">
                         {{ form.pricing_type === 0 ? '每单统一收取固定金额，不随件数变化' : '首件X元 + 续件Y元/件，买越多运费越高' }}
@@ -159,11 +159,11 @@ const formRef = ref(null)
 const form = reactive({
     name: '',
     pricing_type: 1,
-    fixed_fee: 800,
+    fixed_fee: 0,
     first_unit: 1,
-    first_fee: 1000,
+    first_fee: 0,
     continue_unit: 1,
-    continue_fee: 500,
+    continue_fee: 0,
     free_threshold: 0,
     is_default: false,
 })
@@ -287,11 +287,11 @@ onMounted(async () => {
             Object.assign(form, {
                 name: data.name || '',
                 pricing_type: data.pricing_type ?? 1,
-                fixed_fee: data.fixed_fee ?? 800,
+                fixed_fee: data.fixed_fee ?? 0,
                 first_unit: data.first_unit ?? 1,
-                first_fee: data.first_fee ?? 1000,
+                first_fee: data.first_fee ?? 0,
                 continue_unit: data.continue_unit ?? 1,
-                continue_fee: data.continue_fee ?? 500,
+                continue_fee: data.continue_fee ?? 0,
                 free_threshold: data.free_threshold ?? 0,
                 is_default: data.is_default === 1,
             })
