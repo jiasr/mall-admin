@@ -12,21 +12,24 @@
             </el-alert>
 
             <el-form :model="form" label-width="150px" class="pay-form" style="max-width: 650px">
+                <el-divider content-position="left"><b>通用配置</b></el-divider>
+
                 <el-form-item label="小程序 AppID">
                     <el-input v-model="form.app_id" placeholder="微信公众平台 → 开发 → 基本配置" />
                 </el-form-item>
                 <el-form-item label="商户号 (MchID)">
                     <el-input v-model="form.mch_id" placeholder="微信商户平台 → 账户中心" autocomplete="off" />
                 </el-form-item>
-                <el-form-item label="APIv3 密钥">
-                    <el-input v-model="form.mch_key" placeholder="微信商户平台 → API安全 → 设置密钥" show-password autocomplete="new-password" />
-                </el-form-item>
                 <el-form-item label="支付回调 URL">
                     <el-input v-model="form.notify_url" placeholder="https://域名/v1/order/pay/notify" />
                     <span class="form-tip">需公网可访问，用于接收微信支付结果通知</span>
                 </el-form-item>
+
+                <el-divider content-position="left"><b>发（商户 → 微信）</b></el-divider>
+
                 <el-form-item label="APIv3 私钥(PEM)">
                     <el-input v-model="form.wechat_private_key" type="textarea" :rows="4" placeholder="对应文件下载包中的 apiclient_key.pem&#10;用记事本打开后全选复制粘贴即可" />
+                    <span class="form-tip">商户签名用，请求微信时证明身份</span>
                 </el-form-item>
                 <el-form-item label="商户证书(PEM)">
                     <el-input v-model="form.wechat_certificate" type="textarea" :rows="4" placeholder="对应文件下载包中的 apiclient_cert.pem&#10;用记事本打开后全选复制粘贴即可" />
@@ -36,6 +39,20 @@
                     <el-input v-model="form.wechat_cert_serial_no" disabled placeholder="保存证书后自动生成" />
                     <span class="form-tip">自动提取，不可编辑</span>
                 </el-form-item>
+
+                <el-divider content-position="left"><b>收（微信 → 商户）</b></el-divider>
+
+                <el-form-item label="微信支付公钥">
+                    <el-input v-model="form.mch_key" type="textarea" :rows="3" placeholder="商户平台下载的 wechatpay_public_key.pem&#10;从 -----BEGIN PUBLIC KEY----- 到 -----END PUBLIC KEY----- 完整内容" />
+                    <span class="form-tip">用于验签，确认回调通知是微信支付发出的</span>
+                </el-form-item>
+                <el-form-item label="APIv3 密钥">
+                    <el-input v-model="form.apiv3_key" placeholder="微信商户平台 → API安全 → APIv3密钥" show-password autocomplete="new-password" />
+                    <span class="form-tip">32位随机字符串，用于解密回调通知报文</span>
+                </el-form-item>
+
+                <el-divider />
+
                 <el-form-item label="当前环境">
                     <el-tag type="success">正式环境</el-tag>
                     <span class="form-tip">接口地址: api.mch.weixin.qq.com</span>
@@ -61,6 +78,7 @@ const form = reactive({
     app_id: '',
     mch_id: '',
     mch_key: '',
+    apiv3_key: '',
     notify_url: '',
     wechat_private_key: '',
     wechat_certificate: '',

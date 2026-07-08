@@ -20,7 +20,12 @@ export function deleteCategory(id) {
     return axios.post(`/mall/v1/goodscatalog/delete/${id}`)
 }
 
-// 移动分类
-export function moveCategory(data) {
-    return axios.post("/mall/v1/goodscatalog/move", data)
+// 批量更新排序
+export function updateCategorySort(data) {
+    return axios.post("/mall/v1/goodscatalog/update-sort", data)
+}
+
+// 批量删除分类
+export function batchDeleteCategory(data) {
+    return axios.post("/mall/v1/goodscatalog/batch-delete", data)
 }
