@@ -490,57 +490,91 @@ onMounted(async () => {
     if (spuId) {
         isEdit.value = true
         editSpuId.value = spuId
-        try {
-            const data = await getGoodsDetail(spuId)
-            if (data) {
-                form.title = data.title || ''
-                form.categoryId = data.categoryId || null
-                form.isPutOnSale = data.isPutOnSale ?? 0
-                // 合并 primaryImage + images 到统一数组，第一张是主图
-                const imgs = data.images || []
-                if (data.primaryImage && (!imgs.length || imgs[0] !== data.primaryImage)) {
-                    imgs.unshift(data.primaryImage)
-                }
-                form.images = imgs
-                form.detail = data.detailContent || data.detail || ''
-                form.tags = data.tags || []
-
-                // 回填规格
-                if (data.specs && data.specs.length) {
-                    form.specs = data.specs.map(s => ({
-                        title: s.title || '',
-                        values: (s.values || []).map(v => ({
-                            specValueId: v.specValueId || randomId(),
-                            specId: v.specId || randomId(),
-                            specValue: v.specValue || '',
-                        })),
-                        inputVisible: false,
-                        inputValue: '',
-                    }))
-                }
-
-                // 回填 SKU
-                if (data.skuList && data.skuList.length) {
-                    form.skus = data.skuList.map(s => ({
-                        skuId: s.skuId || randomId(),
-                        skuImage: s.skuImage || '',
-                        price: (s.priceInfo && s.priceInfo[0]?.price) || 0,
-                        stockQuantity: (s.stockInfo && s.stockInfo.stockQuantity) || 0,
-                        specInfo: s.specInfo || [],
-                    }))
-                }
-            }
-        } catch (e) {
-            console.error('加载商品数据失败', e)
-            toast('加载商品数据失败', 'error')
-        }
+        await loadGoodsDetail(spuId)
     }
 })
 
-// Keep-alive 缓存激活时重新加载分类树（用户在分类页新增后切回来能刷新）
+// Keep-alive 缓存激活时，根据路由参数判断是新增还是编辑，重置/回填表单
 onActivated(() => {
     loadCategoryTree()
+    const spuId = route.query.spuId
+    if (spuId && spuId !== editSpuId.value) {
+        // 切换到编辑另一个商品 → 重新加载
+        isEdit.value = true
+        editSpuId.value = spuId
+        loadGoodsDetail(spuId)
+    } else if (!spuId && editSpuId.value) {
+        // 从编辑切回新增 → 清空表单
+        resetForm()
+    } else if (!spuId && !isEdit.value) {
+        // 新增后去列表再点新增 → 上次内容还残留，需清空
+        resetForm()
+    }
 })
+
+// 加载商品详情回填表单
+async function loadGoodsDetail(spuId) {
+    try {
+        const data = await getGoodsDetail(spuId)
+        if (data) {
+            form.title = data.title || ''
+            form.categoryId = data.categoryId || null
+            form.isPutOnSale = data.isPutOnSale ?? 0
+            // 合并 primaryImage + images 到统一数组，第一张是主图
+            const imgs = data.images || []
+            if (data.primaryImage && (!imgs.length || imgs[0] !== data.primaryImage)) {
+                imgs.unshift(data.primaryImage)
+            }
+            form.images = imgs
+            form.detail = data.detailContent || data.detail || ''
+            form.tags = data.tags || []
+
+            // 回填规格
+            if (data.specs && data.specs.length) {
+                form.specs = data.specs.map(s => ({
+                    title: s.title || '',
+                    values: (s.values || []).map(v => ({
+                        specValueId: v.specValueId || randomId(),
+                        specId: v.specId || randomId(),
+                        specValue: v.specValue || '',
+                    })),
+                    inputVisible: false,
+                    inputValue: '',
+                }))
+            }
+
+            // 回填 SKU
+            if (data.skuList && data.skuList.length) {
+                form.skus = data.skuList.map(s => ({
+                    skuId: s.skuId || randomId(),
+                    skuImage: s.skuImage || '',
+                    price: (s.priceInfo && s.priceInfo[0]?.price) || 0,
+                    stockQuantity: (s.stockInfo && s.stockInfo.stockQuantity) || 0,
+                    specInfo: s.specInfo || [],
+                }))
+            }
+        }
+    } catch (e) {
+        console.error('加载商品数据失败', e)
+        toast('加载商品数据失败', 'error')
+    }
+}
+
+// 重置表单到初始状态
+function resetForm() {
+    isEdit.value = false
+    editSpuId.value = null
+    form.title = ''
+    form.categoryId = null
+    form.isPutOnSale = 0
+    form.images = []
+    form.detail = ''
+    form.specs = []
+    form.skus = []
+    form.tags = []
+    editorRef.value?.setContents?.('')
+    formRef.value?.clearValidate?.()
+}
 </script>
 
 <style scoped>
