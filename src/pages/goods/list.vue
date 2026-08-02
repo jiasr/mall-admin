@@ -99,7 +99,23 @@
 
                         <el-table-column prop="title" label="商品标题" min-width="200" show-overflow-tooltip />
 
-                        <el-table-column prop="spuId" label="SPU编码" width="120" align="center" />
+                        <el-table-column label="SPU编码" width="240" align="center">
+                            <template #default="scope">
+                                <span
+                                    style="font-family: monospace; font-size: 12px; cursor: pointer; color: #409eff; display: flex; align-items: center; justify-content: center; gap: 4px;"
+                                    @click="handleView(scope.row)"
+                                >
+                                    {{ scope.row.spuId }}
+                                    <el-icon style="color: #c0c4cc; flex-shrink: 0;" @click.stop="copyText(scope.row.spuId)"><DocumentCopy /></el-icon>
+                                </span>
+                            </template>
+                        </el-table-column>
+
+                        <el-table-column label="国际编码" width="140" align="center">
+                            <template #default="scope">
+                                <span style="font-family: monospace; font-size: 12px;">{{ getBarcode(scope.row.skuList) }}</span>
+                            </template>
+                        </el-table-column>
 
                         <el-table-column label="价格" width="120" align="center">
                             <template #default="scope">
@@ -175,8 +191,7 @@
                     <el-descriptions-item label="标题" :span="2">{{ currentGoods.title }}</el-descriptions-item>
                     <el-descriptions-item label="最低售价">¥{{ ((currentGoods.minSalePrice || 0) / 100).toFixed(2) }}</el-descriptions-item>
                     <el-descriptions-item label="最高售价">¥{{ ((currentGoods.maxSalePrice || 0) / 100).toFixed(2) }}</el-descriptions-item>
-                    <el-descriptions-item label="最低划线价">¥{{ ((currentGoods.minLinePrice || 0) / 100).toFixed(2) }}</el-descriptions-item>
-                    <el-descriptions-item label="最高划线价">¥{{ ((currentGoods.maxLinePrice || 0) / 100).toFixed(2) }}</el-descriptions-item>
+
                     <el-descriptions-item label="库存">{{ currentGoods.spuStockQuantity }}</el-descriptions-item>
                     <el-descriptions-item label="已售">{{ currentGoods.soldNum }}</el-descriptions-item>
                     <el-descriptions-item label="上架状态">
@@ -223,7 +238,7 @@
 <script setup>
 import { ref, reactive, onMounted, onActivated, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Refresh, Picture, View, Plus, Edit, Delete, Top, Bottom, Folder, List } from '@element-plus/icons-vue'
+import { Search, Refresh, Picture, View, Plus, Edit, Delete, Top, Bottom, Folder, List, DocumentCopy } from '@element-plus/icons-vue'
 import { getGoodsList, getGoodsDetail, deleteGoods, putOnSale, pullOffSale } from '~/api/goods'
 import { getCategoryTree } from '~/api/category'
 import { toast, showModal } from '~/composables/util'
@@ -371,6 +386,28 @@ async function handleDelete(row) {
             console.error('删除失败', e)
         }
     }
+}
+
+function getBarcode(skuList) {
+    if (!skuList || !skuList.length) return '-'
+    const item = skuList.find(s => s.barcode) || skuList[0]
+    return item.barcode || '-'
+}
+
+function copyText(text) {
+    if (!text) return
+    navigator.clipboard.writeText(text).then(() => {
+        toast('已复制', 'success')
+    }).catch(() => {
+        // fallback
+        const ta = document.createElement('textarea')
+        ta.value = text
+        document.body.appendChild(ta)
+        ta.select()
+        document.execCommand('copy')
+        document.body.removeChild(ta)
+        toast('已复制', 'success')
+    })
 }
 
 onMounted(async () => {
