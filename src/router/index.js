@@ -23,6 +23,7 @@ import SettingRole from "~/pages/setting/role.vue";
 import SettingObjectsto from "~/pages/setting/objectsto.vue";
 import SettingFiles from "~/pages/setting/files.vue";
 import SettingWechatPay from "~/pages/setting/wechatpay.vue";
+import StockGoods from "~/pages/stock/goods.vue";
 
 /* const routes = [
     {
@@ -224,6 +225,14 @@ const asyncRoutes = [
     component: SettingWechatPay,
     meta: {
       title: "微信支付",
+    },
+  },
+  {
+    path: "/stock/goods/list",
+    name: "/stock/goods/list",
+    component: StockGoods,
+    meta: {
+      title: "库存商品",
     },
   },
 ];
