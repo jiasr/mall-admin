@@ -81,6 +81,45 @@
 
                     <!-- 商品表格 -->
                     <el-table :data="tableData" border size="small" style="width: 100%" v-loading="loading">
+                        <!-- 展开行：展示该 SPU 下每个 SKU 关联的进销存商品信息 -->
+                        <el-table-column type="expand" width="48">
+                            <template #default="scope">
+                                <div class="expand-panel">
+                                    <el-table :data="scope.row.skuList || []" border size="small">
+                                        <el-table-column prop="skuId" label="SKU编码" width="200" />
+                                        <el-table-column label="规格" min-width="160">
+                                            <template #default="s">
+                                                <template v-if="s.row.specInfo && s.row.specInfo.length">
+                                                    <el-tag
+                                                        v-for="(spec, i) in s.row.specInfo"
+                                                        :key="i"
+                                                        size="small"
+                                                        type="info"
+                                                        class="mr-1"
+                                                    >
+                                                        {{ spec.specValue }}
+                                                    </el-tag>
+                                                </template>
+                                                <span v-else class="no-spec">无规格</span>
+                                            </template>
+                                        </el-table-column>
+                                        <el-table-column prop="barcode" label="国际编码" width="160" />
+                                        <el-table-column label="进销存商品" min-width="180">
+                                            <template #default="s">
+                                                <span>{{ s.row.invName || '—' }}</span>
+                                            </template>
+                                        </el-table-column>
+                                        <el-table-column label="进销存库存" width="110" align="center">
+                                            <template #default="s">
+                                                <el-tag :type="(s.row.stock || 0) <= 0 ? 'danger' : 'success'" size="small">
+                                                    {{ s.row.stock || 0 }}
+                                                </el-tag>
+                                            </template>
+                                        </el-table-column>
+                                    </el-table>
+                                </div>
+                            </template>
+                        </el-table-column>
                         <el-table-column label="商品图片" width="80" align="center">
                             <template #default="scope">
                                 <el-image
@@ -119,7 +158,7 @@
 
                         <el-table-column label="价格" width="120" align="center">
                             <template #default="scope">
-                                <span class="price">¥{{ ((scope.row.price || scope.row.minSalePrice) / 100).toFixed(2) }}</span>
+                                <span class="price">¥{{ (((scope.row.price ?? scope.row.minSalePrice) || 0) / 100).toFixed(2) }}</span>
                             </template>
                         </el-table-column>
 
@@ -584,6 +623,16 @@ onActivated(() => {
 
 .content-card :deep(.el-table__body-wrapper) {
     overflow-y: auto;
+}
+
+.expand-panel {
+    padding: 8px 16px;
+    background: #fafafa;
+}
+
+.expand-panel .no-spec {
+    color: #c0c4cc;
+    font-size: 13px;
 }
 
 .price {

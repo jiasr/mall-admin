@@ -76,41 +76,50 @@
                     <span class="divider-title">规格定义</span>
                 </el-divider>
 
-                <el-form-item label="商品规格">
-                    <div class="specs-section">
-                        <div v-for="(spec, si) in form.specs" :key="si" class="spec-block">
-                            <div class="spec-header">
-                                <span>规格{{ si + 1 }}：</span>
-                                <el-input v-model="spec.title" placeholder="规格名称（如颜色、尺码）" style="width: 160px" size="small" />
-                                <span class="spec-values-label">可选值：</span>
-                                <el-tag
-                                    v-for="(sv, vi) in spec.values"
-                                    :key="vi"
-                                    closable
-                                    size="small"
-                                    @close="removeSpecValue(si, vi)"
-                                    style="margin-right: 4px"
-                                >
-                                    {{ sv.specValue }}
-                                </el-tag>
-                                <el-input
-                                    v-if="spec.inputVisible"
-                                    ref="specValueInputRef"
-                                    v-model="spec.inputValue"
-                                    size="small"
-                                    style="width: 100px"
-                                    @keyup.enter="addSpecValue(si)"
-                                    @blur="addSpecValue(si)"
-                                />
-                                <el-button v-else size="small" :icon="Plus" @click="showSpecInput(si)">添加值</el-button>
-                                <el-button type="danger" size="small" :icon="Delete" circle @click="removeSpec(si)" />
+                <el-form-item label="规格模式">
+                    <el-tabs v-model="specMode" class="spec-tabs" @tab-change="onSpecModeChange">
+                        <el-tab-pane label="无规格" name="noSpec">
+                            <div class="no-spec-tip">
+                                <p>当前为无规格商品。点击下方「自动生成SKU」生成一条无规格SKU，然后在 SKU 表格中填写价格、库存，并从进销存选择国际编码。</p>
                             </div>
-                        </div>
-                        <el-button type="primary" :icon="Plus" plain size="small" @click="addSpec" :disabled="form.specs.length >= 3">
-                            添加规格
-                        </el-button>
-                        <span class="tip">最多3组规格</span>
-                    </div>
+                        </el-tab-pane>
+                        <el-tab-pane label="有规格" name="spec">
+                            <div class="specs-section">
+                                <div v-for="(spec, si) in form.specs" :key="si" class="spec-block">
+                                    <div class="spec-header">
+                                        <span>规格{{ si + 1 }}：</span>
+                                        <el-input v-model="spec.title" placeholder="规格名称（如颜色、尺码）" style="width: 160px" size="small" />
+                                        <span class="spec-values-label">可选值：</span>
+                                        <el-tag
+                                            v-for="(sv, vi) in spec.values"
+                                            :key="vi"
+                                            closable
+                                            size="small"
+                                            @close="removeSpecValue(si, vi)"
+                                            style="margin-right: 4px"
+                                        >
+                                            {{ sv.specValue }}
+                                        </el-tag>
+                                        <el-input
+                                            v-if="spec.inputVisible"
+                                            ref="specValueInputRef"
+                                            v-model="spec.inputValue"
+                                            size="small"
+                                            style="width: 100px"
+                                            @keyup.enter="addSpecValue(si)"
+                                            @blur="addSpecValue(si)"
+                                        />
+                                        <el-button v-else size="small" :icon="Plus" @click="showSpecInput(si)">添加值</el-button>
+                                        <el-button type="danger" size="small" :icon="Delete" circle @click="removeSpec(si)" />
+                                    </div>
+                                </div>
+                                <el-button type="primary" :icon="Plus" plain size="small" @click="addSpec" :disabled="form.specs.length >= 3">
+                                    添加规格
+                                </el-button>
+                                <span class="tip">最多3组规格</span>
+                            </div>
+                        </el-tab-pane>
+                    </el-tabs>
                 </el-form-item>
 
                 <!-- ====== SKU 列表 ====== -->
@@ -170,14 +179,27 @@
                                 <el-input-number v-model="scope.row.price" :min="0" :step="100" size="small" controls-position="right" style="width: 100%" />
                             </template>
                         </el-table-column>
-                        <el-table-column label="国际编码" width="140">
+                        <el-table-column label="国际编码" min-width="200">
                             <template #default="scope">
-                                <el-input v-model="scope.row.barcode" placeholder="条形码/EAN-13" size="small" />
+                                <el-tag
+                                    v-if="scope.row.barcode"
+                                    type="info"
+                                    size="small"
+                                    closable
+                                    class="barcode-tag"
+                                    @click="openStockPicker(scope.$index)"
+                                    @close="scope.row.barcode = ''"
+                                >
+                                    {{ scope.row.barcode }}
+                                </el-tag>
+                                <el-button v-else type="primary" link size="small" @click="openStockPicker(scope.$index)">
+                                    选择进销存商品
+                                </el-button>
                             </template>
                         </el-table-column>
                         <el-table-column label="库存" width="100">
                             <template #default="scope">
-                                <el-input-number v-model="scope.row.stockQuantity" :min="0" size="small" controls-position="right" style="width: 100%" />
+                                <span class="stock-value">{{ scope.row.stockQuantity }}</span>
                             </template>
                         </el-table-column>
                         <el-table-column label="操作" width="80" fixed="right">
@@ -230,6 +252,57 @@
             </el-form>
         </el-card>
 
+        <!-- ====== 进销存商品选择弹窗 ====== -->
+        <el-dialog
+            v-model="stockPickerVisible"
+            title="选择进销存商品"
+            width="680px"
+            top="8vh"
+            append-to-body
+            destroy-on-close
+        >
+            <div class="stock-picker-filter">
+                <el-input
+                    v-model="stockPickerKeyword"
+                    placeholder="输入商品名称搜索"
+                    clearable
+                    size="default"
+                    :prefix-icon="Search"
+                    @keyup.enter="searchStockGoods(stockPickerKeyword)"
+                    @clear="searchStockGoods('')"
+                >
+                    <template #append>
+                        <el-button :icon="Search" @click="searchStockGoods(stockPickerKeyword)">搜索</el-button>
+                    </template>
+                </el-input>
+            </div>
+            <el-table
+                :data="stockGoodsOptions"
+                v-loading="skuSelectLoading"
+                border
+                size="small"
+                max-height="420"
+                highlight-current-row
+                class="stock-picker-table"
+            >
+                <el-table-column prop="name" label="商品名称" min-width="160" show-overflow-tooltip />
+                <el-table-column prop="barcode" label="国际编码" width="140" />
+                <el-table-column prop="stockQuantity" label="库存" width="80" />
+                <el-table-column prop="salePrice" label="售价(元)" width="90" />
+                <el-table-column label="操作" width="80" fixed="right">
+                    <template #default="scope">
+                        <el-button type="primary" link size="small" @click="confirmPickStock(scope.row)">选择</el-button>
+                    </template>
+                </el-table-column>
+                <template #empty>
+                    <span>未找到进销存商品，可调整关键字重试</span>
+                </template>
+            </el-table>
+            <template #footer>
+                <el-button @click="stockPickerVisible = false">关闭</el-button>
+            </template>
+        </el-dialog>
+
         <!-- 底部操作栏 -->
         <div class="bottom-bar">
             <el-button type="primary" size="large" @click="handleSubmit" :loading="submitting">
@@ -243,9 +316,10 @@
 <script setup>
 import { ref, reactive, onMounted, onActivated, nextTick, shallowRef } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Plus, Delete, Check, Upload, Close } from '@element-plus/icons-vue'
+import { Plus, Delete, Check, Upload, Close, Search } from '@element-plus/icons-vue'
 import { toast } from '~/composables/util'
 import { addGoods, updateGoods, getGoodsDetail } from '~/api/goods'
+import { getStockGoodsList } from '~/api/stock'
 import { getCategoryTree } from '~/api/category'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
@@ -259,6 +333,14 @@ const { uploading: imageUploading, progress: uploadProgress, handleUpload } = us
 
 const isEdit = ref(false)
 const editSpuId = ref(null)
+
+// 规格模式：noSpec=无规格，spec=有规格
+const specMode = ref('noSpec')
+
+// 切换规格模式时清空已生成的 SKU，避免规格/无规格混合
+function onSpecModeChange() {
+    form.skus = []
+}
 
 const form = reactive({
     title: '',
@@ -374,8 +456,18 @@ function removeSpecValue(si, vi) {
 // ====== SKU ======
 function autoGenerateSkus() {
     const specs = form.specs.filter(s => s.values.length > 0)
-    if (specs.length === 0) {
-        toast('请先设置规格及规格值', 'warning')
+
+    // 无规格模式：生成一条无规格 SKU
+    if (specMode.value === 'noSpec') {
+        form.skus = [{
+            skuId: randomId(),
+            skuImage: '',
+            price: 0,
+            barcode: '',
+            stockQuantity: 0,
+            specInfo: [],
+        }]
+        toast('已生成 1 个SKU（无规格）', 'success')
         return
     }
 
@@ -397,6 +489,44 @@ function autoGenerateSkus() {
 }
 
 function removeSku(i) { form.skus.splice(i, 1) }
+
+// ====== 进销存商品选择弹窗 ======
+const skuSelectLoading = ref(false)
+const stockGoodsOptions = ref([])
+const stockPickerVisible = ref(false)
+const stockPickerKeyword = ref('')
+const stockPickerIndex = ref(-1)
+
+async function searchStockGoods(keyword) {
+    skuSelectLoading.value = true
+    try {
+        const data = await getStockGoodsList({ pageIndex: 1, pageSize: 50, keyword: keyword || '' })
+        stockGoodsOptions.value = (data && data.list) || []
+    } catch (e) {
+        stockGoodsOptions.value = []
+    } finally {
+        skuSelectLoading.value = false
+    }
+}
+
+// 打开弹窗，加载进销存商品列表
+function openStockPicker(index) {
+    stockPickerIndex.value = index
+    stockPickerKeyword.value = ''
+    stockPickerVisible.value = true
+    searchStockGoods('')
+}
+
+// 选择某条进销存商品：回填条码 + 库存（只回填库存，不回填售价/图片）
+function confirmPickStock(goods) {
+    if (!goods) return
+    const idx = stockPickerIndex.value
+    if (idx >= 0 && form.skus[idx]) {
+        form.skus[idx].barcode = goods.barcode || ''
+        form.skus[idx].stockQuantity = goods.stockQuantity || 0
+    }
+    stockPickerVisible.value = false
+}
 
 // ====== 标签 ======
 const tagInputVisible = ref(false)
@@ -560,6 +690,9 @@ async function loadGoodsDetail(spuId) {
                     stockQuantity: (s.stockInfo && s.stockInfo.stockQuantity) || 0,
                     specInfo: s.specInfo || [],
                 }))
+                // 根据首个 SKU 是否带规格，决定规格模式
+                const hasSpec = (data.skuList[0]?.specInfo && data.skuList[0].specInfo.length > 0)
+                specMode.value = hasSpec ? 'spec' : 'noSpec'
             }
         }
     } catch (e) {
@@ -580,6 +713,7 @@ function resetForm() {
     form.specs = []
     form.skus = []
     form.tags = []
+    specMode.value = 'noSpec'
     editorRef.value?.setContents?.('')
     formRef.value?.clearValidate?.()
 }
@@ -713,6 +847,40 @@ function resetForm() {
     display: flex;
     align-items: center;
     gap: 4px;
+}
+
+.spec-tabs :deep(.el-tabs__header) {
+    margin-bottom: 12px;
+}
+
+.no-spec-tip {
+    padding: 16px;
+    background: #fafafa;
+    border: 1px dashed #dcdfe6;
+    border-radius: 6px;
+    color: #606266;
+    font-size: 13px;
+    line-height: 1.8;
+}
+
+.barcode-tag {
+    cursor: pointer;
+    max-width: 100%;
+}
+
+.stock-value {
+    color: #303133;
+    display: inline-block;
+    width: 100%;
+    text-align: center;
+}
+
+.stock-picker-filter {
+    margin-bottom: 12px;
+}
+
+.stock-picker-table :deep(.el-table__row) {
+    cursor: pointer;
 }
 
 .specs-section {
