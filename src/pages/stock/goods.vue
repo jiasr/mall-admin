@@ -82,7 +82,15 @@
                     <template v-if="currentGoods">
                         <el-descriptions :column="1" border>
                             <el-descriptions-item label="商品名称">{{ currentGoods.name }}</el-descriptions-item>
-                            <el-descriptions-item label="条码">{{ currentGoods.barcode }}</el-descriptions-item>
+                            <el-descriptions-item label="条码">
+                                <template v-if="currentGoods.barcode">
+                                    <div class="barcode-wrap">
+                                        <canvas id="stock-barcode-canvas" class="barcode-canvas"></canvas>
+                                        <div class="barcode-text">{{ currentGoods.barcode }}</div>
+                                    </div>
+                                </template>
+                                <span v-else>-</span>
+                            </el-descriptions-item>
                             <el-descriptions-item label="品牌">{{ currentGoods.brand || '-' }}</el-descriptions-item>
                             <el-descriptions-item label="规格">{{ currentGoods.spec || '-' }}</el-descriptions-item>
                             <el-descriptions-item label="单位">{{ currentGoods.unit || '-' }}</el-descriptions-item>
@@ -277,8 +285,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onActivated } from 'vue'
+import { ref, reactive, onMounted, onActivated, nextTick } from 'vue'
 import { Search, Refresh, Picture, View, Delete } from '@element-plus/icons-vue'
+import JsBarcode from 'jsbarcode'
 import { getStockGoodsList, getStockGoodsDetail, deleteStockGoods, getStockLogList, getStockInList, getStockInDetail } from '~/api/stock'
 import { toast, showModal } from '~/composables/util'
 
@@ -323,6 +332,8 @@ async function handleView(row) {
     stockLogs.value = []
     try {
         currentGoods.value = await getStockGoodsDetail(row.id)
+        await nextTick()
+        renderBarcode()
     } catch (e) {
         console.error('加载详情失败', e)
     }
@@ -331,6 +342,43 @@ async function handleView(row) {
         stockLogs.value = (data && data.list) || []
     } catch (e) {
         console.error('加载库存流水失败', e)
+    }
+}
+
+// 用 JsBarcode 渲染 EAN-13 条码图片
+function renderBarcode() {
+    const goods = currentGoods.value
+    const el = document.getElementById('stock-barcode-canvas')
+    if (!goods || !el) return
+    const barcode = goods.barcode || ''
+    if (!barcode) {
+        const ctx = el.getContext('2d')
+        ctx.clearRect(0, 0, el.width, el.height)
+        return
+    }
+    try {
+        JsBarcode(el, barcode, {
+            format: 'EAN13',
+            displayValue: true,
+            width: 2,
+            height: 80,
+            margin: 5,
+            fontSize: 14,
+        })
+    } catch (e) {
+        // 非 13 位或非数字时，降级为 Code128 展示，保证仍可打印
+        try {
+            JsBarcode(el, barcode, {
+                format: 'CODE128',
+                displayValue: true,
+                width: 2,
+                height: 80,
+                margin: 5,
+                fontSize: 14,
+            })
+        } catch (err) {
+            console.error('条码渲染失败', err)
+        }
     }
 }
 
@@ -492,6 +540,25 @@ onActivated(handleSearch)
     background: #f5f7fa;
     color: #c0c4cc;
     border-radius: 4px;
+}
+
+.barcode-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.barcode-canvas {
+    max-width: 100%;
+    height: auto;
+    background: #fff;
+}
+
+.barcode-text {
+    margin-top: 4px;
+    font-size: 13px;
+    color: #606266;
+    letter-spacing: 1px;
 }
 .block-title {
     margin: 18px 0 10px;
