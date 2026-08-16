@@ -174,8 +174,9 @@ async function handleSearch() {
         if (filterForm.status !== null && filterForm.status !== '') params.status = filterForm.status
 
         const data = await getUserList(params)
-        tableData.value = data.list || data.records || []
-        pager.total = data.totalCount || data.total || 0
+        const list = data && data.data ? data.data : data
+        tableData.value = list.list || list.records || []
+        pager.total = list.total || list.totalCount || 0
     } catch (e) {
         console.error('加载用户列表失败', e)
     } finally {
@@ -201,7 +202,7 @@ async function handleView(row) {
     currentUser.value = null
     try {
         const data = await getUserDetail(row.id)
-        currentUser.value = data
+        currentUser.value = data && data.data ? data.data : data
     } catch (e) {
         console.error('加载用户详情失败', e)
     }
