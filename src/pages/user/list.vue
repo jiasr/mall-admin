@@ -122,6 +122,29 @@
                     <el-descriptions-item label="手机号">{{ currentUser.phone || '-' }}</el-descriptions-item>
                     <el-descriptions-item label="注册时间">{{ currentUser.createTime || currentUser.createdAt || '-' }}</el-descriptions-item>
                 </el-descriptions>
+
+                <!-- 收货地址 -->
+                <div class="user-address-section">
+                    <div class="user-address-title">
+                        <el-icon><Location /></el-icon> 收货地址
+                        <el-tag v-if="addressLoading" size="small" type="info">加载中...</el-tag>
+                    </div>
+                    <el-table v-if="addressList.length" :data="addressList" size="small" border>
+                        <el-table-column prop="name" label="收货人" width="80" />
+                        <el-table-column prop="mobile" label="手机号" width="120" />
+                        <el-table-column label="详细地址" min-width="180">
+                            <template #default="scope">
+                                {{ [scope.row.province, scope.row.city, scope.row.district, scope.row.detail].filter(Boolean).join(' ') }}
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="" width="60" align="center">
+                            <template #default="scope">
+                                <el-tag v-if="scope.row.is_defalut == 1 || scope.row.isDefault == 1" size="small" type="warning">默认</el-tag>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                    <el-empty v-else-if="!addressLoading" description="暂无收货地址" :image-size="60" />
+                </div>
             </template>
         </el-drawer>
     </div>
@@ -129,8 +152,8 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { Search, Refresh, User, View, CircleClose, CircleCheck, Delete } from '@element-plus/icons-vue'
-import { getUserList, getUserDetail, toggleUserStatus, deleteUser } from '~/api/user'
+import { Search, Refresh, User, View, CircleClose, CircleCheck, Delete, Location } from '@element-plus/icons-vue'
+import { getUserList, getUserDetail, toggleUserStatus, deleteUser, getUserAddresses } from '~/api/user'
 import { toast, showModal, imgUrl } from '~/composables/util'
 
 const loading = ref(false)
@@ -183,15 +206,37 @@ function handleReset() {
 // 查看详情
 const drawerVisible = ref(false)
 const currentUser = ref(null)
+const addressList = ref([])
+const addressLoading = ref(false)
 
 async function handleView(row) {
     drawerVisible.value = true
     currentUser.value = null
+    addressList.value = []
     try {
         const data = await getUserDetail(row.id)
         currentUser.value = data && data.data ? data.data : data
+        // 复用小程序地址接口，按 userid 拉取收货地址
+        loadAddresses(currentUser.value.id)
     } catch (e) {
         console.error('加载用户详情失败', e)
+    }
+}
+
+// 拉取用户收货地址
+async function loadAddresses(userid) {
+    if (!userid) return
+    addressLoading.value = true
+    try {
+        const res = await getUserAddresses(userid)
+        // 地址接口返回 {total, data: [地址...]}，data 即地址数组
+        const body = res && res.data ? res.data : res
+        addressList.value = Array.isArray(body) ? body : body.data || body.list || []
+    } catch (e) {
+        console.error('加载用户地址失败', e)
+        addressList.value = []
+    } finally {
+        addressLoading.value = false
     }
 }
 
@@ -319,5 +364,22 @@ onMounted(() => {
     font-size: 18px;
     font-weight: 600;
     color: #303133;
+}
+
+/* 收货地址 */
+.user-address-section {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #ebeef5;
+}
+
+.user-address-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #303133;
+    margin-bottom: 12px;
 }
 </style>

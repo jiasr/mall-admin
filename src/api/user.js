@@ -19,3 +19,8 @@ export function toggleUserStatus(id, status) {
 export function deleteUser(id) {
     return axios.post(`/mall/v1/user/admin/delete/${id}`)
 }
+
+// 获取用户的收货地址列表（复用小程序地址接口）
+export function getUserAddresses(userid) {
+    return axios.get("/mall/v1/address/list", { params: { userid } })
+}
