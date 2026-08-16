@@ -87,7 +87,7 @@ const form = reactive({
 
 async function loadConfig() {
     try {
-        const res = await axios.get('/v1/admin/wechatpay/get')
+        const res = await axios.get('/mall/v1/admin/wechatpay/get')
         if (res) {
             Object.keys(form).forEach(key => {
                 if (res[key] !== undefined) {
@@ -101,7 +101,7 @@ async function loadConfig() {
 async function handleSave() {
     saving.value = true
     try {
-        const res = await axios.post('/v1/admin/wechatpay/save', { ...form })
+        const res = await axios.post('/mall/v1/admin/wechatpay/save', { ...form })
         if (res && res.success !== false) {
             toast('微信支付配置已保存', 'success')
         } else {

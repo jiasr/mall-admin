@@ -103,7 +103,7 @@ const baseUrl = ref('')
 
 async function loadBaseUrl() {
     try {
-        const res = await axios.get('/v1/admin/storage/get')
+        const res = await axios.get('/mall/v1/admin/storage/get')
         if (res) {
             const ep = res.public_endpoint || res.endpoint || ''
             const bucket = res.bucket_name || ''
@@ -163,7 +163,7 @@ function formatSize(bytes) {
 async function loadNode(node, resolve) {
     const prefix = node.data?.prefix || ''
     try {
-        const res = await axios.get('/v1/admin/storage/files', { params: { prefix } })
+        const res = await axios.get('/mall/v1/admin/storage/files', { params: { prefix } })
         if (res?.success) {
             resolve((res.data.folders || []).map(f => ({
                 label: f.replace(/\/$/, '').split('/').pop(),
@@ -183,7 +183,7 @@ async function browse(prefix) {
     files.value = []
     subfolders.value = []
     try {
-        const res = await axios.get('/v1/admin/storage/files', { params: { prefix } })
+        const res = await axios.get('/mall/v1/admin/storage/files', { params: { prefix } })
         // 丢弃过期响应（用户已切换到其他目录）
         if (tick !== _browseTick) return
         if (res?.success) {

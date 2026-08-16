@@ -183,7 +183,7 @@ async function loadStats() {
 
         // 后台统计接口（如果后端有）
         try {
-            const dashboardRes = await axios.get('/v1/admin/dashboard/stats')
+            const dashboardRes = await axios.get('/mall/v1/admin/dashboard/stats')
             if (dashboardRes) {
                 stats.payOrderCount = dashboardRes.payOrderCount ?? '-'
                 stats.orderCount = dashboardRes.orderCount ?? '-'
