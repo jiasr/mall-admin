@@ -34,7 +34,7 @@
             <el-table :data="tableData" border size="small" style="width: 100%" v-loading="loading">
                 <el-table-column label="头像" width="60" align="center">
                     <template #default="scope">
-                        <el-avatar :src="scope.row.avatar" :size="36" shape="circle">
+                        <el-avatar :src="imgUrl(scope.row.avatar)" :size="36" shape="circle">
                             <el-icon><User /></el-icon>
                         </el-avatar>
                     </template>
@@ -115,7 +115,7 @@
         <el-drawer v-model="drawerVisible" title="用户详情" size="500px" destroy-on-close>
             <template v-if="currentUser">
                 <div class="user-detail-header">
-                    <el-avatar :src="currentUser.avatar" :size="64" shape="circle">
+                    <el-avatar :src="imgUrl(currentUser.avatar)" :size="64" shape="circle">
                         <el-icon :size="28"><User /></el-icon>
                     </el-avatar>
                     <div class="user-detail-info">
@@ -144,7 +144,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { Search, Refresh, User, View, CircleClose, CircleCheck, Delete } from '@element-plus/icons-vue'
 import { getUserList, getUserDetail, toggleUserStatus, deleteUser } from '~/api/user'
-import { toast, showModal } from '~/composables/util'
+import { toast, showModal, imgUrl } from '~/composables/util'
 
 const loading = ref(false)
 const tableData = ref([])
