@@ -44,14 +44,6 @@
 
                 <el-table-column prop="phone" label="手机号" width="130" align="center" />
 
-                <el-table-column label="性别" width="60" align="center">
-                    <template #default="scope">
-                        {{ scope.row.sex === 1 ? '男' : scope.row.sex === 2 ? '女' : '-' }}
-                    </template>
-                </el-table-column>
-
-                <el-table-column prop="email" label="邮箱" min-width="180" show-overflow-tooltip />
-
                 <el-table-column label="状态" width="80" align="center">
                     <template #default="scope">
                         <el-tag v-if="scope.row.status === 1 || scope.row.status === undefined" type="success" size="small">正常</el-tag>
@@ -128,12 +120,7 @@
                 <el-descriptions :column="2" border class="user-detail-body">
                     <el-descriptions-item label="用户ID">{{ currentUser.id }}</el-descriptions-item>
                     <el-descriptions-item label="手机号">{{ currentUser.phone || '-' }}</el-descriptions-item>
-                    <el-descriptions-item label="邮箱">{{ currentUser.email || '-' }}</el-descriptions-item>
-                    <el-descriptions-item label="性别">
-                        {{ currentUser.sex === 1 ? '男' : currentUser.sex === 2 ? '女' : '未设置' }}
-                    </el-descriptions-item>
                     <el-descriptions-item label="注册时间">{{ currentUser.createTime || currentUser.createdAt || '-' }}</el-descriptions-item>
-                    <el-descriptions-item label="最后登录">{{ currentUser.lastLoginTime || '-' }}</el-descriptions-item>
                 </el-descriptions>
             </template>
         </el-drawer>
