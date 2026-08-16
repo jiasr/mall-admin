@@ -64,10 +64,11 @@ export function useImageUpload() {
      * 单文件上传
      * @param {File} file - 文件对象
      * @param {string} scene - 场景标识: product/system/avatar/banner/editor
-     * @returns {Promise<string>} - 返回公网 URL
+     * @returns {Promise<{url: string, object_name: string, public_url: string}>}
+     *   url = 相对路径(对象存储路径, 存库用)；public_url = 完整公网URL(富文本预览用)
      */
     async function handleUpload(file, scene = 'product') {
-        if (!file) return ''
+        if (!file) return { url: '', object_name: '', public_url: '' }
 
         uploading.value = true
         progress.value = 0
@@ -96,7 +97,8 @@ export function useImageUpload() {
 
             console.log('[upload] raw res.data:', JSON.stringify(res?.data))
             const inner = res?.data?.data || res?.data || {}
-            const publicUrl = inner.public_url
+            const relativeUrl = inner.relative_url      // 相对路径(如 /mall-images1/...)，存库用
+            const publicUrl = inner.public_url          // 完整公网URL，编辑器预览用
             const objectName = inner.object_name
             if (!publicUrl) {
                 console.error('[upload] public_url 为空, res.data:', res?.data)
@@ -105,12 +107,12 @@ export function useImageUpload() {
 
             progress.value = 100
             toast('上传成功', 'success')
-            return { url: publicUrl, object_name: objectName }
+            return { url: relativeUrl || objectName || publicUrl, object_name: objectName, public_url: publicUrl }
 
         } catch (e) {
             console.error('图片上传失败:', e)
             toast('图片上传失败: ' + (e.message || '未知错误'), 'error')
-            return { url: '', object_name: '' }
+            return { url: '', object_name: '', public_url: '' }
         } finally {
             uploading.value = false
             progress.value = 0
@@ -158,8 +160,9 @@ export function useImageUpload() {
         try {
             const compressed = await compressImage(file)
             const res = await proxyUpload(compressed, scene)
-            if (!res?.success || !res?.data?.public_url) return ''
-            return res.data.public_url
+            if (!res?.success) return ''
+            // 存相对路径(对象存储路径)，完整 URL 由展示层 imgUrl() 拼
+            return res?.data?.relative_url || res?.data?.object_name || res?.data?.public_url || ''
         } catch (e) {
             console.error('文件上传失败:', file.name, e)
             return ''

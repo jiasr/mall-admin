@@ -92,6 +92,7 @@
 import { reactive, ref, shallowRef, onMounted } from 'vue'
 import { Document } from '@element-plus/icons-vue'
 import { toast } from '~/composables/util'
+import store from '~/store'
 import { useImageUpload } from '~/composables/useImageUpload'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
@@ -121,8 +122,10 @@ const editorConfig = {
         uploadImage: {
             async customUpload(file, insertFn) {
                 const result = await handleUpload(file, 'editor')
-                if (result?.url) {
-                    insertFn(result.url, file.name, result.url)
+                // 编辑器内用完整公网URL预览，存库时由 toRelPath 转回相对路径
+                const previewUrl = result?.public_url || result?.url
+                if (previewUrl) {
+                    insertFn(previewUrl, file.name, previewUrl)
                 }
             },
         },
@@ -159,6 +162,17 @@ async function loadAgreement() {
     } catch { /* 使用默认值 */ }
 }
 
+// 富文本图片完整URL转相对路径存库（完整URL由后端返回时拼接）
+function toRelPath(html) {
+    if (!html) return html || ''
+    const base = store.state.imageBaseUrl || ''
+    if (!base) return html
+    let rel = html.split(base).join('')
+    // 保证以 / 开头(相对路径格式与后端 relative_url 一致)
+    if (rel && rel.charAt(0) !== '/') rel = '/' + rel
+    return rel
+}
+
 async function handleSave(key) {
     saving.value = true
     try {
@@ -167,7 +181,7 @@ async function handleSave(key) {
             id: item.id,
             type: item.type,
             title: item.title,
-            content: item.content,
+            content: toRelPath(item.content),
             version: item.version,
             status: 1,
         })

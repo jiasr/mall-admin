@@ -42,7 +42,7 @@
                 <template #default="scope">
                     <el-image
                         v-if="scope.row.thumbnail"
-                        :src="scope.row.thumbnail"
+                        :src="imgUrl(scope.row.thumbnail)"
                         fit="cover"
                         style="width:28px;height:28px;border-radius:4px;vertical-align:middle;margin-right:6px"
                     />
@@ -114,7 +114,7 @@
                     <div class="thumbnail-upload">
                         <el-image
                             v-if="form.thumbnail"
-                            :src="form.thumbnail"
+                            :src="imgUrl(form.thumbnail)"
                             fit="cover"
                             style="width:60px;height:60px;border-radius:6px;margin-right:10px;border:1px solid #dcdfe6"
                         />
@@ -158,7 +158,7 @@ import { ref, reactive, computed, onMounted, nextTick, onBeforeUnmount } from 'v
 import { Plus, Refresh, Edit, Delete, ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 import Sortable from 'sortablejs'
 import { getCategoryTree, addCategory, updateCategory, deleteCategory, updateCategorySort, batchDeleteCategory } from '~/api/category'
-import { toast, showModal } from '~/composables/util'
+import { toast, showModal, imgUrl } from '~/composables/util'
 import { useImageUpload } from '~/composables/useImageUpload'
 
 const { uploading: thumbnailUploading, handleUpload } = useImageUpload()

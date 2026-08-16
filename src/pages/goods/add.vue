@@ -49,7 +49,7 @@
                         <div v-for="(url, i) in form.images" :key="i" class="image-row">
                             <el-tag v-if="i === 0" type="danger" size="small" style="margin-right:6px">主图</el-tag>
                             <div class="image-preview" v-if="url">
-                                <el-image :src="url" fit="contain" style="width:80px;height:80px" />
+                                <el-image :src="imgUrl(url)" fit="contain" style="width:80px;height:80px" />
                             </div>
                             <el-button type="danger" :icon="Delete" circle size="small" @click="removeImage(i)" />
                         </div>
@@ -159,7 +159,7 @@
                         <el-table-column label="SKU图片" width="100">
                             <template #default="scope">
                                 <div class="sku-image-cell">
-                                    <el-avatar v-if="scope.row.skuImage" :src="scope.row.skuImage" :size="32" shape="square" />
+                                    <el-avatar v-if="scope.row.skuImage" :src="imgUrl(scope.row.skuImage)" :size="32" shape="square" />
                                     <el-upload
                                         class="inline-upload"
                                         action="#"
@@ -317,7 +317,8 @@
 import { ref, reactive, onMounted, onActivated, nextTick, shallowRef } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Plus, Delete, Check, Upload, Close, Search } from '@element-plus/icons-vue'
-import { toast } from '~/composables/util'
+import { toast, imgUrl } from '~/composables/util'
+import store from '~/store'
 import { addGoods, updateGoods, getGoodsDetail } from '~/api/goods'
 import { getStockGoodsList } from '~/api/stock'
 import { getCategoryTree } from '~/api/category'
@@ -370,8 +371,10 @@ const editorConfig = {
         uploadImage: {
             async customUpload(file, insertFn) {
                 const result = await handleUpload(file, 'editor')
-                if (result?.url) {
-                    insertFn(result.url, file.name, result.url)
+                // 编辑器内用完整公网URL预览，存库时由 toRelPath 转回相对路径
+                const previewUrl = result?.public_url || result?.url
+                if (previewUrl) {
+                    insertFn(previewUrl, file.name, previewUrl)
                 }
             },
         },
@@ -560,8 +563,9 @@ async function handleSubmit() {
             title: form.title,
             categoryId: form.categoryId,
             isPutOnSale: form.isPutOnSale,
-            images: form.images.filter(u => u.trim()),
-            detail: form.detail,
+            images: form.images.filter(u => u.trim()).map(u => toRelPath(u)),
+            // 富文本图片转相对路径存库（完整URL由后端返回时拼接）
+            detail: toRelPath(form.detail),
             specs: form.specs.map(s => ({
                 specId: randomId(),
                 title: s.title,
@@ -569,7 +573,7 @@ async function handleSubmit() {
             })),
             skus: form.skus.map(s => ({
                 skuId: s.skuId,
-                skuImage: s.skuImage,
+                skuImage: toRelPath(s.skuImage),
                 price: s.price,
                 barcode: s.barcode,
                 stockQuantity: s.stockQuantity,
@@ -601,6 +605,18 @@ function handleCancel() {
 // ====== 工具函数 ======
 function randomId() {
     return Math.random().toString(36).substring(2, 14) + Date.now().toString(36)
+}
+
+// 把富文本HTML里完整URL的图片(<img src="https://...">)转回相对路径(去掉imageBaseUrl前缀)
+// 存库时只存对象存储路径(/mall-images1/...)，完整URL由后端在返回时拼接
+function toRelPath(html) {
+    if (!html) return html || ''
+    const base = store.state.imageBaseUrl || ''
+    if (!base) return html
+    let rel = html.split(base).join('')
+    // 保证以 / 开头(相对路径格式与后端 relative_url 一致)
+    if (rel && rel.charAt(0) !== '/') rel = '/' + rel
+    return rel
 }
 
 function cartesianProduct(arrays) {
