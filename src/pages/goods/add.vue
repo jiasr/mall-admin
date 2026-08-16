@@ -563,7 +563,7 @@ async function handleSubmit() {
             title: form.title,
             categoryId: form.categoryId,
             isPutOnSale: form.isPutOnSale,
-            images: form.images.filter(u => u.trim()).map(u => toRelPath(u)),
+            images: form.images.filter(u => u.trim()).map(u => toRelUrl(u)),
             // 富文本图片转相对路径存库（完整URL由后端返回时拼接）
             detail: toRelPath(form.detail),
             specs: form.specs.map(s => ({
@@ -573,7 +573,7 @@ async function handleSubmit() {
             })),
             skus: form.skus.map(s => ({
                 skuId: s.skuId,
-                skuImage: toRelPath(s.skuImage),
+                skuImage: toRelUrl(s.skuImage),
                 price: s.price,
                 barcode: s.barcode,
                 stockQuantity: s.stockQuantity,
@@ -613,10 +613,20 @@ function toRelPath(html) {
     if (!html) return html || ''
     const base = store.state.imageBaseUrl || ''
     if (!base) return html
-    let rel = html.split(base).join('')
-    // 保证以 / 开头(相对路径格式与后端 relative_url 一致)
-    if (rel && rel.charAt(0) !== '/') rel = '/' + rel
-    return rel
+    // 只替换 src 属性里的完整URL → 相对路径，保留前导 /
+    const escaped = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const regex = new RegExp('(src=["\'])(' + escaped + ')([^"\']*?)(["\'])', 'g')
+    return html.replace(regex, (m, p1, p2, p3, p4) => p1 + '/' + p3 + p4)
+}
+
+// 单个完整URL转相对路径(用于 images / skuImage 数组项)
+function toRelUrl(url) {
+    if (!url) return url || ''
+    const base = store.state.imageBaseUrl || ''
+    if (!base) return url
+    if (url.indexOf(base) !== 0) return url
+    const rel = url.slice(base.length)
+    return rel.charAt(0) === '/' ? rel : '/' + rel
 }
 
 function cartesianProduct(arrays) {

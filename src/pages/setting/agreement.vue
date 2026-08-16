@@ -167,10 +167,10 @@ function toRelPath(html) {
     if (!html) return html || ''
     const base = store.state.imageBaseUrl || ''
     if (!base) return html
-    let rel = html.split(base).join('')
-    // 保证以 / 开头(相对路径格式与后端 relative_url 一致)
-    if (rel && rel.charAt(0) !== '/') rel = '/' + rel
-    return rel
+    // 只替换 src 属性里的完整URL → 相对路径，保留前导 /
+    const escaped = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const regex = new RegExp('(src=["\'])(' + escaped + ')([^"\']*?)(["\'])', 'g')
+    return html.replace(regex, (m, p1, p2, p3, p4) => p1 + '/' + p3 + p4)
 }
 
 async function handleSave(key) {
