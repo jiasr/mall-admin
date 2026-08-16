@@ -1,12 +1,10 @@
 import { createStore } from "vuex";
 import { login, getinfo } from "~/api/manager";
-import { getSetting } from "~/api/setting";
 import { setToken, removeToken } from "~/composables/auth";
 const store = createStore({
   state() {
     return {
       // 用户信息
-      remoteurl : "http://localhost:8560",
       user: {},
       // 侧边宽度
       asideWidth: "250px",
@@ -14,9 +12,6 @@ const store = createStore({
       imageBaseUrl: '',
       menus: [],
       ruleNames: [],
-      // 网站配置
-      siteName: "后台管理系统",
-      siteLogo: "",
     };
   },
   mutations: {
@@ -40,10 +35,6 @@ const store = createStore({
     SET_IMAGE_BASE_URL(state, url) {
       state.imageBaseUrl = url;
     },
-    SET_SITE_CONFIG(state, { siteName, logo }) {
-      if (siteName) state.siteName = siteName;
-      if (logo !== undefined) state.siteLogo = logo;
-    },
   },
   actions: {
     // 登录
@@ -63,7 +54,6 @@ const store = createStore({
       return new Promise((resolve, reject) => {
         getinfo()
           .then((res) => {
-            console.log(res);
             const menus = res.menus || []
             commit("SET_USERINFO", res);
             commit("SET_MENUS", menus);

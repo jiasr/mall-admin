@@ -4,7 +4,6 @@ import "element-plus/dist/index.css";
 import App from "./App.vue";
 import { router } from "./router";
 import store from "./store";
-import test from "./store";
 import * as ElementPlusIconsVue from "@element-plus/icons-vue";
 
 
@@ -14,7 +13,6 @@ app.use(router);
 app.use(ElementPlus);
 
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
-  console.log(key)
   app.component(key, component);
 }
 import "virtual:windi.css";

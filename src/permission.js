@@ -2,7 +2,6 @@ import { router, addRoutes } from "~/router";
 import { getToken } from "~/composables/auth";
 import { toast, showFullLoading, hideFullLoading } from "~/composables/util";
 import store from "./store";
-import test from "./store";
 
 
 // 全局前置守卫
@@ -57,7 +56,8 @@ router.beforeEach(async (to, from, next) => {
   }
 
   // 设置页面标题
-  let title = (to.meta.title ? to.meta.title : "Vue3") + "-" +test;
+  const siteName = store.state.siteConfig.site_name || '后台管理系统';
+  let title = (to.meta.title ? to.meta.title : siteName) + "-" + siteName;
   document.title = title;
 
   hasNewRoutes ? next({ path: to.path, query: to.query, hash: to.hash, replace: true }) : next();
