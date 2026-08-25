@@ -24,6 +24,7 @@ import SettingRole from "~/pages/setting/role.vue";
 import SettingObjectsto from "~/pages/setting/objectsto.vue";
 import SettingFiles from "~/pages/setting/files.vue";
 import SettingWechatPay from "~/pages/setting/wechatpay.vue";
+import SettingPrinter from "~/pages/setting/printer.vue";
 import SettingAgreement from "~/pages/setting/agreement.vue";
 import StockGoods from "~/pages/stock/goods.vue";
 
@@ -235,6 +236,14 @@ const asyncRoutes = [
     component: SettingWechatPay,
     meta: {
       title: "微信支付",
+    },
+  },
+  {
+    path: "/setting/printer",
+    name: "/setting/printer",
+    component: SettingPrinter,
+    meta: {
+      title: "小票机",
     },
   },
   {
