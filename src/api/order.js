@@ -10,6 +10,11 @@ export function getOrderDetail(orderNo) {
     return axios.get("/mall/v1/order/admin/detail", { params: { orderNo } })
 }
 
+// 获取订单小票打印数据
+export function getPrintTicket(orderNo) {
+    return axios.get(`/mall/v1/order/admin/print/${orderNo}`)
+}
+
 // 更新订单状态（发货等）
 export function processOrder(orderNo, data) {
     return axios.post(`/mall/v1/order/admin/process/${orderNo}`, data)

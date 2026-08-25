@@ -16,6 +16,7 @@ import GrouponAdd from "~/pages/groupon/add.vue";
 import GrouponOrder from "~/pages/groupon/order.vue";
 import OrderList from "~/pages/order/list.vue";
 import OrderRefund from "~/pages/order/refund.vue";
+import OrderPrint from "~/pages/order/print.vue";
 import UserList from "~/pages/user/list.vue";
 import AgentList from "~/pages/agent/list.vue";
 import SettingBase from "~/pages/setting/base.vue";
@@ -170,6 +171,14 @@ const asyncRoutes = [
     component: OrderRefund,
     meta: {
       title: "退款管理",
+    },
+  },
+  {
+    path: "/order/print",
+    name: "/order/print",
+    component: OrderPrint,
+    meta: {
+      title: "打印小票",
     },
   },
   {

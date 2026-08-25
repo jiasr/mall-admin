@@ -91,10 +91,13 @@
                     </template>
                 </el-table-column>
 
-                <el-table-column label="操作" width="240" fixed="right" align="center">
+                <el-table-column label="操作" width="280" fixed="right" align="center">
                     <template #default="scope">
                         <el-button type="primary" size="small" link @click="handleView(scope.row)">
                             <el-icon><View /></el-icon> 查看
+                        </el-button>
+                        <el-button type="warning" size="small" link @click="handlePrint(scope.row)">
+                            <el-icon><Printer /></el-icon> 打印
                         </el-button>
                         <el-button
                             v-if="scope.row.status === 1"
@@ -249,12 +252,14 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { Search, Refresh, Picture, View, Top, Close, Delete, Warning } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
+import { Search, Refresh, Picture, View, Top, Close, Delete, Warning, Printer } from '@element-plus/icons-vue'
 import { getOrderList, getOrderDetail, processOrder, deleteOrder, refundOrder } from '~/api/order'
 import { toast, showModal } from '~/composables/util'
 
 const loading = ref(false)
 const tableData = ref([])
+const router = useRouter()
 
 const filterForm = reactive({
     orderNo: '',
@@ -317,6 +322,13 @@ function handleReset() {
 // 查看详情
 const drawerVisible = ref(false)
 const currentOrder = ref(null)
+
+// 打印小票
+function handlePrint(row) {
+    // Hash 模式路由，需用 router.resolve 生成带 # 的 URL
+    const url = router.resolve(`/order/print?orderNo=${row.orderNo}`).href
+    window.open(url)
+}
 
 async function handleView(row) {
     drawerVisible.value = true
