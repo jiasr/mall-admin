@@ -6,7 +6,8 @@
                     <span class="page-title"><el-icon><Warning /></el-icon> 退款管理</span>
                     <div class="search-area">
                         <el-input v-model="filterForm.orderNo" placeholder="订单号" clearable style="width: 200px" @keyup.enter="handleSearch" />
-                        <el-select v-model="filterForm.refundStatus" placeholder="退款状态" clearable style="width: 130px">
+                        <el-select v-model="filterForm.refundStatus" placeholder="退款状态" clearable style="width: 170px">
+                            <el-option label="全部(已支付/已退款)" value="" />
                             <el-option label="已支付(可退款)" :value="1" />
                             <el-option label="已退款" :value="2" />
                         </el-select>
@@ -147,10 +148,10 @@ async function handleSearch() {
             pageSize: pager.pageSize,
         }
         if (filterForm.orderNo) params.orderNo = filterForm.orderNo
-        // 按退款状态筛选
-        if (filterForm.refundStatus !== null && filterForm.refundStatus !== '') {
-            params.status = filterForm.refundStatus === 1 ? 1 : -1  // 具体逻辑视后端支持调整
-        }
+        // 按支付状态筛选（1=已支付 2=已退款），默认只看已支付/已退款订单
+        const payStatus = (filterForm.refundStatus === null || filterForm.refundStatus === '')
+            ? '1,2' : filterForm.refundStatus
+        params.payStatus = payStatus
         const data = await getOrderList(params)
         const list = data && data.data ? data.data : data
         tableData.value = list.list || list.records || []
