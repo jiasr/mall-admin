@@ -21,17 +21,10 @@
                             <el-form-item v-for="f in b.configFields" :key="f.key" :label="f.label">
                                 <el-input
                                     v-model="configs[b.brand][f.key]"
-                                    :type="pwdVisible[b.brand]?.[f.key] ? 'text' : f.type"
+                                    :type="f.type"
                                     :autocomplete="f.type === 'password' ? 'new-password' : 'off'"
-                                    :placeholder="f.type === 'password' && configs[b.brand][f.key] === MASKED ? '已配置，留空则不修改' : '请输入' + f.label"
-                                >
-                                    <template v-if="f.type === 'password'" #suffix>
-                                        <el-icon class="pwd-eye" @click="togglePwd(b.brand, f.key)">
-                                            <View v-if="pwdVisible[b.brand]?.[f.key]" />
-                                            <Hide v-else />
-                                        </el-icon>
-                                    </template>
-                                </el-input>
+                                    :placeholder="'请输入' + f.label"
+                                />
                             </el-form-item>
                             <el-form-item label="启用">
                                 <el-switch v-model="enableds[b.brand]" />
@@ -106,11 +99,9 @@
 
 <script setup>
 import { ref, reactive, onMounted, onActivated } from 'vue'
-import { Printer, Plus, View, Hide } from '@element-plus/icons-vue'
+import { Printer, Plus } from '@element-plus/icons-vue'
 import { toast } from '~/composables/util'
 import { getPrinterBrands, getPrinterConfig, savePrinterConfig, testPrinter } from '~/api/printer'
-
-const MASKED = '******'
 
 const brands = ref([])
 const activeTab = ref('')
@@ -120,13 +111,6 @@ const configs = reactive({})
 const devices = reactive({})
 const enableds = reactive({})
 const testSns = reactive({})
-// 密码字段明文/密文切换状态（按品牌+字段 key 记录）
-const pwdVisible = reactive({})
-
-function togglePwd(brand, key) {
-    if (!pwdVisible[brand]) pwdVisible[brand] = {}
-    pwdVisible[brand][key] = !pwdVisible[brand][key]
-}
 
 async function loadConfig(brand) {
     try {
@@ -257,11 +241,6 @@ onActivated(() => {
 .form-tip {
     margin-left: 10px;
     font-size: 12px;
-    color: #909399;
-}
-
-.pwd-eye {
-    cursor: pointer;
     color: #909399;
 }
 
