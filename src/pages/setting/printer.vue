@@ -30,12 +30,51 @@
                                 <el-switch v-model="enableds[b.brand]" />
                                 <span class="form-tip">启用后该品牌打印机可接收打印任务</span>
                             </el-form-item>
+                            <el-form-item label="回调地址">
+                                <el-input
+                                    v-model="configs[b.brand].backurl"
+                                    placeholder="https://您的备案域名/v1/printer/callback/feie"
+                                />
+                            </el-form-item>
+                            <el-form-item label="回调说明">
+                                <div class="callback-tip">
+                                    <p>1. 完整回调地址：<code>https://您的域名/v1/printer/callback/feie</code>，域名须通过 ICP 备案（不支持 IP、端口及短链域名）。</p>
+                                    <p>2. 在飞鹅云平台「打印结果回调」处填写该地址，并按提示下载验证文件 <code>feieyun_verify_xxx.txt</code> 上传至域名（或路径）指向的 web 目录，确保可访问。</p>
+                                    <p>3. 保存后打印任务自动携带该回调地址，飞鹅打完主动通知结果，订单打印状态实时更新为「成功/失败」。</p>
+                                    <p>4. 不填则不接收回调，打印状态将停留在「已提交」，无法确认打印机是否真正出票。</p>
+                                </div>
+                            </el-form-item>
                             <el-form-item>
                                 <el-button type="primary" :loading="saving" @click="handleSave(b.brand)">
                                     保存配置
                                 </el-button>
                             </el-form-item>
                         </el-form>
+
+                        <!-- 打印策略 -->
+                        <div class="strategy-section">
+                            <el-divider content-position="left">打印策略</el-divider>
+                            <el-form label-width="110px" class="brand-form">
+                                <el-form-item label="打印策略">
+                                    <el-radio-group v-model="configs[b.brand].printStrategy">
+                                        <el-radio label="default">默认设备</el-radio>
+                                        <el-radio label="round_robin">轮询</el-radio>
+                                    </el-radio-group>
+                                    <span class="form-tip">轮询：多台设备轮流打印，均衡出票量</span>
+                                </el-form-item>
+                                <el-form-item v-if="configs[b.brand].printStrategy === 'default'" label="默认设备">
+                                    <el-select v-model="configs[b.brand].defaultSn" placeholder="选择默认打印设备" style="width: 260px">
+                                        <el-option
+                                            v-for="d in devices[b.brand]"
+                                            :key="d.sn"
+                                            :label="(d.name || d.sn) + ' (' + d.sn + ')'"
+                                            :value="d.sn"
+                                        />
+                                    </el-select>
+                                    <span class="form-tip">未选择时使用列表第一台启用设备</span>
+                                </el-form-item>
+                            </el-form>
+                        </div>
 
                         <!-- 打印机列表 -->
                         <div class="device-section">
@@ -121,7 +160,7 @@ async function loadConfig(brand) {
             return
         }
         const info = result.data || result
-        configs[brand] = { ...(info.config || {}) }
+        configs[brand] = { printStrategy: 'default', backurl: '', ...(info.config || {}) }
         devices[brand] = (info.devices || []).map(d => ({ ...d }))
         enableds[brand] = !!info.enabled
         if (!testSns[brand] && devices[brand].length) {
@@ -242,6 +281,23 @@ onActivated(() => {
     margin-left: 10px;
     font-size: 12px;
     color: #909399;
+}
+
+.strategy-section {
+    margin-top: 8px;
+}
+
+.callback-tip {
+    font-size: 12px;
+    line-height: 1.9;
+    color: #909399;
+}
+
+.callback-tip code {
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: #f4f4f5;
+    color: #409eff;
 }
 
 .device-section {
