@@ -91,13 +91,22 @@
                     </template>
                 </el-table-column>
 
-                <el-table-column label="操作" width="280" fixed="right" align="center">
+                <el-table-column label="操作" width="360" fixed="right" align="center">
                     <template #default="scope">
                         <el-button type="primary" size="small" link @click="handleView(scope.row)">
                             <el-icon><View /></el-icon> 查看
                         </el-button>
+                        <el-button
+                            type="success"
+                            size="small"
+                            link
+                            :loading="printingNo === scope.row.orderNo"
+                            @click="handleTicketPrint(scope.row)"
+                        >
+                            <el-icon><Printer /></el-icon> 打小票
+                        </el-button>
                         <el-button type="warning" size="small" link @click="handlePrint(scope.row)">
-                            <el-icon><Printer /></el-icon> 打印
+                            <el-icon><Document /></el-icon> 打印
                         </el-button>
                         <el-button
                             v-if="scope.row.status === 1"
@@ -253,8 +262,9 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Refresh, Picture, View, Top, Close, Delete, Warning, Printer } from '@element-plus/icons-vue'
+import { Search, Refresh, Picture, View, Top, Close, Delete, Warning, Printer, Document } from '@element-plus/icons-vue'
 import { getOrderList, getOrderDetail, processOrder, deleteOrder, refundOrder } from '~/api/order'
+import { printTicket } from '~/api/printer'
 import { toast, showModal } from '~/composables/util'
 
 const loading = ref(false)
@@ -322,6 +332,27 @@ function handleReset() {
 // 查看详情
 const drawerVisible = ref(false)
 const currentOrder = ref(null)
+
+// 云打印小票（飞鹅设备出票，自动/手动入口）
+const printingNo = ref('')
+async function handleTicketPrint(row) {
+    if (printingNo.value) return
+    printingNo.value = row.orderNo
+    try {
+        const data = await printTicket(row.orderNo)
+        const result = data && data.data ? data.data : data
+        if (result && result.success === false) {
+            toast(result.message || '打印失败', 'error')
+        } else {
+            toast(result?.message || '打印指令已发送', 'success')
+        }
+    } catch (e) {
+        console.error('云打印小票失败', e)
+        toast('打印失败，请检查飞鹅配置', 'error')
+    } finally {
+        printingNo.value = ''
+    }
+}
 
 // 打印小票
 function handlePrint(row) {

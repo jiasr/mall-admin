@@ -21,3 +21,8 @@ export function savePrinterConfig(brand, data) {
 export function testPrinter(brand, sn) {
     return axios.post(`/mall/v1/admin/printer/${brand}/test`, { sn })
 }
+
+// 打印订单小票（云打印，飞鹅设备出票；sn 不传时按配置策略选设备）
+export function printTicket(orderNo, sn = '') {
+    return axios.post('/mall/v1/admin/printer/feie/print', { orderNo, sn })
+}
