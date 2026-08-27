@@ -85,6 +85,25 @@
                     </template>
                 </el-table-column>
 
+                <el-table-column label="小票" width="90" align="center">
+                    <template #default="scope">
+                        <el-tooltip
+                            v-if="scope.row.ticketStatus !== undefined && scope.row.ticketStatus !== -1"
+                            :content="'点击查看打印记录' + (scope.row.ticketTime ? '（' + scope.row.ticketTime + '）' : '')"
+                        >
+                            <el-tag
+                                :type="ticketTagType(scope.row.ticketStatus)"
+                                size="small"
+                                class="ticket-status"
+                                @click="handleViewTicketLogs(scope.row)"
+                            >
+                                {{ ticketStatusText(scope.row.ticketStatus) }}
+                            </el-tag>
+                        </el-tooltip>
+                        <span v-else class="phone-text">-</span>
+                    </template>
+                </el-table-column>
+
                 <el-table-column label="下单时间" width="160" align="center">
                     <template #default="scope">
                         {{ scope.row.createTime || scope.row.createdAt }}
@@ -233,6 +252,23 @@
             </template>
         </el-drawer>
 
+        <!-- 打印记录对话框 -->
+        <el-dialog v-model="ticketLogsVisible" :title="'打印记录 - ' + ticketLogsOrderNo" width="760px" destroy-on-close>
+            <el-table :data="ticketLogs" border size="small" v-loading="ticketLogsLoading" empty-text="该订单暂无打印记录">
+                <el-table-column label="设备SN" prop="printerSn" width="160" />
+                <el-table-column label="状态" width="90" align="center">
+                    <template #default="scope">
+                        <el-tag :type="ticketTagType(scope.row.status)" size="small">
+                            {{ ticketStatusText(scope.row.status) }}
+                        </el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column label="飞鹅订单ID" prop="feieOrderId" min-width="140" show-overflow-tooltip />
+                <el-table-column label="打印时间" prop="createTime" width="160" align="center" />
+                <el-table-column label="备注" prop="message" min-width="150" show-overflow-tooltip />
+            </el-table>
+        </el-dialog>
+
         <!-- 发货对话框 -->
         <el-dialog v-model="shipDialogVisible" title="订单发货" width="450px" destroy-on-close>
             <el-form ref="shipFormRef" :model="shipForm" :rules="shipFormRules" label-width="80px">
@@ -264,7 +300,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Refresh, Picture, View, Top, Close, Delete, Warning, Printer, Document } from '@element-plus/icons-vue'
 import { getOrderList, getOrderDetail, processOrder, deleteOrder, refundOrder } from '~/api/order'
-import { printTicket } from '~/api/printer'
+import { printTicket, getPrintLogs } from '~/api/printer'
 import { toast, showModal } from '~/composables/util'
 
 const loading = ref(false)
@@ -332,6 +368,39 @@ function handleReset() {
 // 查看详情
 const drawerVisible = ref(false)
 const currentOrder = ref(null)
+
+// 小票打印状态映射（-1=未打印 0=已提交 1=打印成功 2=打印失败）
+function ticketStatusText(status) {
+    const map = { '-1': '未打印', 0: '已提交', 1: '成功', 2: '失败' }
+    return map[status] ?? '未打印'
+}
+
+function ticketTagType(status) {
+    const map = { '-1': 'info', 0: 'warning', 1: 'success', 2: 'danger' }
+    return map[status] ?? 'info'
+}
+
+// 查看订单打印记录
+const ticketLogsVisible = ref(false)
+const ticketLogsLoading = ref(false)
+const ticketLogsOrderNo = ref('')
+const ticketLogs = ref([])
+async function handleViewTicketLogs(row) {
+    ticketLogsOrderNo.value = row.orderNo
+    ticketLogsVisible.value = true
+    ticketLogsLoading.value = true
+    ticketLogs.value = []
+    try {
+        const data = await getPrintLogs({ orderNo: row.orderNo, pageSize: 50 })
+        const result = data && data.data ? data.data : data
+        ticketLogs.value = (result && result.list) || []
+    } catch (e) {
+        console.error('加载打印记录失败', e)
+        toast('加载打印记录失败', 'error')
+    } finally {
+        ticketLogsLoading.value = false
+    }
+}
 
 // 云打印小票（飞鹅设备出票，自动/手动入口）
 const printingNo = ref('')
@@ -540,6 +609,10 @@ onMounted(() => {
 .phone-text {
     font-size: 12px;
     color: #909399;
+}
+
+.ticket-status {
+    cursor: pointer;
 }
 
 .goods-info {

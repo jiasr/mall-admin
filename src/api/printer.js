@@ -26,3 +26,8 @@ export function testPrinter(brand, sn) {
 export function printTicket(orderNo, sn = '') {
     return axios.post('/mall/v1/admin/printer/feie/print', { orderNo, sn })
 }
+
+// 打印流水记录（分页；orderNo 传订单号可查单个订单的历史打印记录）
+export function getPrintLogs(params) {
+    return axios.get('/mall/v1/admin/printer/feie/logs', { params })
+}

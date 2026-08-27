@@ -16,6 +16,12 @@
                     <el-empty v-if="!b.available" description="该品牌尚未接入，敬请期待" />
 
                     <template v-else>
+                        <!-- 启用开关（最上边） -->
+                        <div class="enable-row">
+                            <el-switch v-model="enableds[b.brand]" />
+                            <span class="form-tip">启用后该品牌打印机可接收打印任务</span>
+                        </div>
+
                         <!-- 账号配置 -->
                         <el-form v-if="configs[b.brand]" :model="configs[b.brand]" label-width="110px" class="brand-form">
                             <el-form-item v-for="f in b.configFields" :key="f.key" :label="f.label">
@@ -25,24 +31,6 @@
                                     :autocomplete="f.type === 'password' ? 'new-password' : 'off'"
                                     :placeholder="'请输入' + f.label"
                                 />
-                            </el-form-item>
-                            <el-form-item label="启用">
-                                <el-switch v-model="enableds[b.brand]" />
-                                <span class="form-tip">启用后该品牌打印机可接收打印任务</span>
-                            </el-form-item>
-                            <el-form-item label="回调地址">
-                                <el-input
-                                    v-model="configs[b.brand].backurl"
-                                    placeholder="https://您的备案域名/v1/printer/callback/feie"
-                                />
-                            </el-form-item>
-                            <el-form-item label="回调说明">
-                                <div class="callback-tip">
-                                    <p>1. 完整回调地址：<code>https://您的域名/v1/printer/callback/feie</code>，域名须通过 ICP 备案（不支持 IP、端口及短链域名）。</p>
-                                    <p>2. 在飞鹅云平台「打印结果回调」处填写该地址，并按提示下载验证文件 <code>feieyun_verify_xxx.txt</code> 上传至域名（或路径）指向的 web 目录，确保可访问。</p>
-                                    <p>3. 保存后打印任务自动携带该回调地址，飞鹅打完主动通知结果，订单打印状态实时更新为「成功/失败」。</p>
-                                    <p>4. 不填则不接收回调，打印状态将停留在「已提交」，无法确认打印机是否真正出票。</p>
-                                </div>
                             </el-form-item>
                             <el-form-item>
                                 <el-button type="primary" :loading="saving" @click="handleSave(b.brand)">
@@ -111,6 +99,78 @@
                             </el-table>
                         </div>
 
+                        <!-- 飞鹅回调配置（打印/扫码两个 Tab） -->
+                        <div v-if="configs[b.brand]" class="callback-section">
+                            <el-divider content-position="left">飞鹅回调配置</el-divider>
+                            <el-tabs v-model="callbackTab[b.brand]">
+                                <el-tab-pane label="打印结果回调" name="print">
+                                    <el-form label-width="110px" class="brand-form">
+                                        <el-form-item label="回调地址">
+                                            <el-input
+                                                v-model="configs[b.brand].backurl"
+                                                placeholder="https://您的域名/v1/printer/callback/feie"
+                                            />
+                                            <div class="callback-tip">
+                                                <p>完整地址：<code>https://您的域名/v1/printer/callback/feie</code>——选中复制后，只需把「您的域名」换成自己的域名，填入飞鹅平台与本页即可。</p>
+                                            </div>
+                                        </el-form-item>
+                                        <el-form-item label="验证Token">
+                                            <el-input
+                                                v-model="configs[b.brand].verifyToken"
+                                                placeholder="飞鹅下载的验证文件名随机串，如 f3EQ6NkGls1Y5RXF"
+                                            />
+                                        </el-form-item>
+                                        <el-form-item v-if="verifyUrl(b.brand, 'print')" label="验证地址">
+                                            <div class="callback-tip">
+                                                <p>将该地址填入飞鹅平台完成域名验证（系统自动返回验证内容，无需上传文件）：</p>
+                                                <p><code>{{ verifyUrl(b.brand, 'print') }}</code></p>
+                                            </div>
+                                        </el-form-item>
+                                        <el-form-item label="回调说明">
+                                            <div class="callback-tip">
+                                                <p>飞鹅回调需要「平台登记」和「本页携带」两步配合，缺一不可：</p>
+                                                <p><b>1. 平台登记</b>：登录飞鹅云平台，在「打印结果回调」处填写本地址（域名须 ICP 备案，不支持 IP/端口/短链），并按提示填写上面的验证 Token 完成域名验证。不登记的话，平台不会向该地址推送任何结果。</p>
+                                                <p><b>2. 本页携带（关键）</b>：飞鹅要求每次打印任务必须携带回调地址参数（backurl）才会推送结果——仅平台登记、这里不填，打印请求不会携带该参数，打印状态将一直停在「已提交」。本页保存后，每次打印（自动/手动/测试）都会自动携带。</p>
+                                                <p><b>3. 两处填同一个地址</b>；不填则不接收回调，无法确认打印机是否真正出票。</p>
+                                            </div>
+                                        </el-form-item>
+                                    </el-form>
+                                </el-tab-pane>
+                                <el-tab-pane label="扫码回调" name="scan">
+                                    <el-form label-width="110px" class="brand-form">
+                                        <el-form-item label="回调地址">
+                                            <el-input
+                                                v-model="configs[b.brand].scanBackurl"
+                                                placeholder="https://您的域名/v1/printer/callback/feie/scan"
+                                            />
+                                            <div class="callback-tip">
+                                                <p>完整地址：<code>https://您的域名/v1/printer/callback/feie/scan</code>——选中复制后，只需把「您的域名」换成自己的域名，填入飞鹅平台即可。</p>
+                                            </div>
+                                        </el-form-item>
+                                        <el-form-item label="验证Token">
+                                            <el-input
+                                                v-model="configs[b.brand].scanVerifyToken"
+                                                placeholder="飞鹅下载的验证文件名随机串（与打印回调的 Token 不同）"
+                                            />
+                                        </el-form-item>
+                                        <el-form-item v-if="verifyUrl(b.brand, 'scan')" label="验证地址">
+                                            <div class="callback-tip">
+                                                <p>将该地址填入飞鹅平台完成域名验证（系统自动返回验证内容，无需上传文件）：</p>
+                                                <p><code>{{ verifyUrl(b.brand, 'scan') }}</code></p>
+                                            </div>
+                                        </el-form-item>
+                                        <el-form-item label="回调说明">
+                                            <div class="callback-tip">
+                                                <p>扫码一体机/带扫码枪的打印机扫码后，飞鹅主动推送扫码数据到本地址：</p>
+                                                <p><b>1. 平台登记</b>：登录飞鹅云平台，在「扫码回调」处填写本地址（域名须 ICP 备案），并按提示填写上面的验证 Token 完成域名验证。</p>
+                                                <p><b>2. 扫码回调由飞鹅主动推送，无需携带额外参数</b>；不填则不接收扫码数据。</p>
+                                            </div>
+                                        </el-form-item>
+                                    </el-form>
+                                </el-tab-pane>
+                            </el-tabs>
+                        </div>
+
                         <!-- 测试打印 -->
                         <div class="test-section">
                             <el-divider content-position="left">测试打印</el-divider>
@@ -150,6 +210,7 @@ const configs = reactive({})
 const devices = reactive({})
 const enableds = reactive({})
 const testSns = reactive({})
+const callbackTab = reactive({})
 
 async function loadConfig(brand) {
     try {
@@ -160,7 +221,7 @@ async function loadConfig(brand) {
             return
         }
         const info = result.data || result
-        configs[brand] = { printStrategy: 'default', backurl: '', ...(info.config || {}) }
+        configs[brand] = { printStrategy: 'default', backurl: '', verifyToken: '', scanBackurl: '', scanVerifyToken: '', ...(info.config || {}) }
         devices[brand] = (info.devices || []).map(d => ({ ...d }))
         enableds[brand] = !!info.enabled
         if (!testSns[brand] && devices[brand].length) {
@@ -175,6 +236,15 @@ function handleTabChange(brand) {
     if (brand && configs[brand] === undefined) {
         loadConfig(brand)
     }
+}
+
+// 由回调地址 + 验证Token 推导飞鹅域名验证文件地址（type: print=打印回调 scan=扫码回调）
+function verifyUrl(brand, type = 'print') {
+    const cfg = configs[brand] || {}
+    const backurl = type === 'scan' ? cfg.scanBackurl : cfg.backurl
+    const token = type === 'scan' ? cfg.scanVerifyToken : cfg.verifyToken
+    if (!backurl || !token) return ''
+    return backurl.replace(/\/[^/]*$/, '/feieyun_verify_' + token + '.txt')
 }
 
 async function handleSave(brand) {
@@ -240,6 +310,7 @@ async function loadPage() {
             configs[b.brand] = {}
             devices[b.brand] = []
             enableds[b.brand] = false
+            callbackTab[b.brand] = 'print'
         }
         if (brands.value.length) {
             activeTab.value = brands.value[0].brand
@@ -275,6 +346,17 @@ onActivated(() => {
 
 .brand-form {
     max-width: 520px;
+}
+
+.enable-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.callback-section {
+    margin-top: 8px;
 }
 
 .form-tip {
