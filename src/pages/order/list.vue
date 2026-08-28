@@ -269,7 +269,14 @@
         <!-- 打印记录对话框 -->
         <el-dialog v-model="ticketLogsVisible" :title="'打印记录 - ' + ticketLogsOrderNo" width="760px" destroy-on-close>
             <el-table :data="ticketLogs" border size="small" v-loading="ticketLogsLoading" empty-text="该订单暂无打印记录">
-                <el-table-column label="设备SN" prop="printerSn" width="160" />
+                <el-table-column label="触发方式" width="100" align="center">
+                    <template #default="scope">
+                        <el-tag :type="ticketTriggerTagType(scope.row.triggerType)" size="small">
+                            {{ ticketTriggerText(scope.row.triggerType) }}
+                        </el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column label="设备SN" prop="printerSn" width="150" />
                 <el-table-column label="状态" width="90" align="center">
                     <template #default="scope">
                         <el-tag :type="ticketTagType(scope.row.status)" size="small">
@@ -277,7 +284,7 @@
                         </el-tag>
                     </template>
                 </el-table-column>
-                <el-table-column label="飞鹅订单ID" prop="feieOrderId" min-width="140" show-overflow-tooltip />
+                <el-table-column label="飞鹅订单ID" prop="feieOrderId" min-width="240" show-overflow-tooltip />
                 <el-table-column label="打印时间" prop="createTime" width="160" align="center" />
                 <el-table-column label="备注" prop="message" min-width="150" show-overflow-tooltip />
             </el-table>
@@ -392,6 +399,17 @@ function ticketStatusText(status) {
 function ticketTagType(status) {
     const map = { '-2': 'info', '-1': 'info', 0: 'warning', 1: 'success', 2: 'danger' }
     return map[status] ?? 'info'
+}
+
+// 打印触发方式映射（auto=支付回调自动 manual=手工点击 test=测试打印）
+function ticketTriggerText(type) {
+    const map = { auto: '自动', manual: '手动', test: '测试' }
+    return map[type] || (type ? type : '未知')
+}
+
+function ticketTriggerTagType(type) {
+    const map = { auto: 'success', manual: 'primary', test: 'info' }
+    return map[type] || 'info'
 }
 
 // 查看订单打印记录
