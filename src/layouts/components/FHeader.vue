@@ -6,7 +6,7 @@
             {{ $store.state.siteConfig.site_name || '后台管理系统' }}
         </span>
         <el-icon class="icon-btn" @click="$store.commit('handleAsideWidth')">
-            <fold v-if="$store.state.asideWidth == '250px'"/>
+            <fold v-if="$store.state.asideWidth == '160px'"/>
             <Expand v-else/>
         </el-icon>
         <el-tooltip effect="dark" content="刷新" placement="bottom">
@@ -104,7 +104,7 @@ const handleRefresh = () => location.reload()
 }
 
 .logo {
-    width: 250px;
+    width: 160px;
     @apply flex justify-center items-center text-xl font-thin;
 }
 

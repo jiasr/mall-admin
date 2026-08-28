@@ -1,52 +1,52 @@
 <template>
     <div class="order-page">
+        <!-- 左侧：订单状态平铺 + 搜索栏 -->
+        <div class="side-panel">
+            <div class="side-section">
+                <div class="side-title">订单状态</div>
+                <div
+                    v-for="s in statusList"
+                    :key="String(s.value)"
+                    class="status-item"
+                    :class="{ active: activeStatus === s.value }"
+                    @click="handleStatusClick(s.value)"
+                >
+                    {{ s.label }}
+                </div>
+            </div>
+            <div class="side-section">
+                <div class="side-title">搜索</div>
+                <el-input v-model="filterForm.orderNo" placeholder="订单号" clearable @keyup.enter="handleSearch" />
+                <el-input v-model="filterForm.consignee" placeholder="收货人姓名" clearable @keyup.enter="handleSearch" />
+                <el-input v-model="filterForm.phone" placeholder="收货人手机号" clearable @keyup.enter="handleSearch" />
+                <el-button type="primary" class="side-btn" @click="handleSearch">
+                    <el-icon><Search /></el-icon> 搜索
+                </el-button>
+                <el-button class="side-btn" @click="handleReset">
+                    <el-icon><Refresh /></el-icon> 重置
+                </el-button>
+            </div>
+        </div>
+
+        <!-- 右侧：订单表格 -->
         <el-card class="content-card" shadow="never">
-            <!-- 顶部操作栏 -->
+            <!-- 顶部标题 -->
             <div class="content-header">
                 <div class="header-left">
                     <span class="page-title">订单管理</span>
                 </div>
-                <el-form :inline="true" :model="filterForm" class="search-form">
-                    <el-form-item label="订单号">
-                        <el-input v-model="filterForm.orderNo" placeholder="订单号" clearable @keyup.enter="handleSearch" />
-                    </el-form-item>
-                    <el-form-item label="收货人">
-                        <el-input v-model="filterForm.consignee" placeholder="收货人姓名" clearable @keyup.enter="handleSearch" />
-                    </el-form-item>
-                    <el-form-item label="手机号">
-                        <el-input v-model="filterForm.phone" placeholder="收货人手机号" clearable @keyup.enter="handleSearch" />
-                    </el-form-item>
-                    <el-form-item label="订单状态">
-                        <el-select v-model="filterForm.status" placeholder="全部状态" clearable style="width: 130px">
-                            <el-option label="待付款" :value="0" />
-                            <el-option label="待发货" :value="1" />
-                            <el-option label="已发货" :value="2" />
-                            <el-option label="已签收" :value="3" />
-                            <el-option label="已完成" :value="4" />
-                            <el-option label="已取消" :value="-1" />
-                        </el-select>
-                    </el-form-item>
-                    <el-form-item>
-                        <el-button type="primary" @click="handleSearch">
-                            <el-icon><Search /></el-icon> 搜索
-                        </el-button>
-                        <el-button @click="handleReset">
-                            <el-icon><Refresh /></el-icon> 重置
-                        </el-button>
-                    </el-form-item>
-                </el-form>
             </div>
 
             <!-- 订单表格 -->
             <el-table :data="tableData" border size="small" style="width: 100%" v-loading="loading">
                 <el-table-column label="订单号" prop="orderNo" width="180" align="center" show-overflow-tooltip />
 
-                <el-table-column label="商品信息" min-width="250">
+                <el-table-column label="商品信息" width="180">
                     <template #default="scope">
-                        <div class="goods-info" v-for="(item, i) in (scope.row.orderItemList || scope.row.items || [])" :key="i">
+                        <div class="goods-info" v-for="(item, i) in goodsList(scope.row)" :key="i">
                             <el-image
                                 :src="item.image || item.thumb"
-                                style="width: 40px; height: 40px; border-radius: 4px; flex-shrink: 0"
+                                style="width: 32px; height: 32px; border-radius: 4px; flex-shrink: 0"
                                 fit="cover"
                             >
                                 <template #error>
@@ -58,6 +58,7 @@
                                 <div class="goods-spec" v-if="item.specInfo">
                                     <el-tag size="small" v-for="(spec, si) in item.specInfo" :key="si">{{ spec.specValue }}</el-tag>
                                 </div>
+                                <div class="goods-amount"><span class="price">¥{{ goodsPrice(item) }}</span></div>
                             </div>
                             <div class="goods-qty">x{{ item.num || item.quantity }}</div>
                         </div>
@@ -77,15 +78,7 @@
                     </template>
                 </el-table-column>
 
-                <el-table-column label="订单状态" width="90" align="center">
-                    <template #default="scope">
-                        <el-tag :type="statusTagType(scope.row.status)" size="small">
-                            {{ statusText(scope.row.status) }}
-                        </el-tag>
-                    </template>
-                </el-table-column>
-
-                <el-table-column label="小票" width="90" align="center">
+                <el-table-column label="小票" width="110" align="center">
                     <template #default="scope">
                         <!-- 未开启打印（飞鹅未配置/未启用）：灰色标签，不可点 -->
                         <el-tag
@@ -115,6 +108,29 @@
                                 {{ ticketStatusText(scope.row.ticketStatus) }}
                             </el-tag>
                         </el-tooltip>
+                        <!-- 小票操作：补打 / 预览 -->
+                        <div class="ticket-actions">
+                            <el-button
+                                type="success"
+                                size="small"
+                                link
+                                :loading="printingNo === scope.row.orderNo"
+                                @click="handleTicketPrint(scope.row)"
+                            >
+                                <el-icon><Printer /></el-icon> 补打小票
+                            </el-button>
+                            <el-button type="warning" size="small" link @click="handlePrint(scope.row)">
+                                <el-icon><Tickets /></el-icon> 小票预览
+                            </el-button>
+                        </div>
+                    </template>
+                </el-table-column>
+
+                <el-table-column label="订单状态" width="90" align="center">
+                    <template #default="scope">
+                        <el-tag :type="statusTagType(scope.row.status)" size="small">
+                            {{ statusText(scope.row.status) }}
+                        </el-tag>
                     </template>
                 </el-table-column>
 
@@ -124,22 +140,10 @@
                     </template>
                 </el-table-column>
 
-                <el-table-column label="操作" width="360" fixed="right" align="center">
+                <el-table-column label="操作" min-width="220" align="center">
                     <template #default="scope">
                         <el-button type="primary" size="small" link @click="handleView(scope.row)">
                             <el-icon><View /></el-icon> 查看
-                        </el-button>
-                        <el-button
-                            type="success"
-                            size="small"
-                            link
-                            :loading="printingNo === scope.row.orderNo"
-                            @click="handleTicketPrint(scope.row)"
-                        >
-                            <el-icon><Printer /></el-icon> 打小票
-                        </el-button>
-                        <el-button type="warning" size="small" link @click="handlePrint(scope.row)">
-                            <el-icon><Document /></el-icon> 打印
                         </el-button>
                         <el-button
                             v-if="scope.row.status === 1"
@@ -267,7 +271,7 @@
         </el-drawer>
 
         <!-- 打印记录对话框 -->
-        <el-dialog v-model="ticketLogsVisible" :title="'打印记录 - ' + ticketLogsOrderNo" width="760px" destroy-on-close>
+        <el-dialog v-model="ticketLogsVisible" :title="'打印记录 - ' + ticketLogsOrderNo" width="1000px" destroy-on-close>
             <el-table :data="ticketLogs" border size="small" v-loading="ticketLogsLoading" empty-text="该订单暂无打印记录">
                 <el-table-column label="触发方式" width="100" align="center">
                     <template #default="scope">
@@ -288,6 +292,43 @@
                 <el-table-column label="打印时间" prop="createTime" width="160" align="center" />
                 <el-table-column label="备注" prop="message" min-width="150" show-overflow-tooltip />
             </el-table>
+        </el-dialog>
+
+        <!-- 重复打印确认对话框：展示打印记录 + 继续/取消 -->
+        <el-dialog v-model="reprintDialogVisible" title="打印提示" width="1000px" :close-on-click-modal="false" destroy-on-close>
+            <el-alert
+                type="warning"
+                :closable="false"
+                show-icon
+                title="该订单已打印过小票，是否继续打印？"
+                style="margin-bottom: 12px"
+            />
+            <el-table :data="reprintLogs" border size="small" max-height="300" empty-text="该订单暂无打印记录">
+                <el-table-column label="触发方式" width="100" align="center">
+                    <template #default="scope">
+                        <el-tag :type="ticketTriggerTagType(scope.row.triggerType)" size="small">
+                            {{ ticketTriggerText(scope.row.triggerType) }}
+                        </el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column label="设备SN" prop="printerSn" width="150" />
+                <el-table-column label="状态" width="90" align="center">
+                    <template #default="scope">
+                        <el-tag :type="ticketTagType(scope.row.status)" size="small">
+                            {{ ticketStatusText(scope.row.status) }}
+                        </el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column label="飞鹅订单ID" prop="feieOrderId" min-width="240" show-overflow-tooltip />
+                <el-table-column label="打印时间" prop="createTime" width="160" align="center" />
+                <el-table-column label="备注" prop="message" min-width="150" show-overflow-tooltip />
+            </el-table>
+            <template #footer>
+                <el-button autofocus @click="reprintDialogVisible = false">取消</el-button>
+                <el-button type="primary" :loading="printingNo === reprintOrderNo" @click="handleReprintConfirm">
+                    继续打印
+                </el-button>
+            </template>
         </el-dialog>
 
         <!-- 发货对话框 -->
@@ -319,7 +360,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Refresh, Picture, View, Top, Close, Delete, Warning, Printer, Document } from '@element-plus/icons-vue'
+import { Search, Refresh, Picture, View, Top, Close, Delete, Warning, Printer, Tickets } from '@element-plus/icons-vue'
 import { getOrderList, getOrderDetail, processOrder, deleteOrder, refundOrder } from '~/api/order'
 import { printTicket, getPrintLogs } from '~/api/printer'
 import { toast, showModal } from '~/composables/util'
@@ -334,6 +375,26 @@ const filterForm = reactive({
     phone: '',
     status: null,
 })
+
+// 订单状态平铺列表（value 为 null 表示全部）
+const statusList = [
+    { label: '全部', value: null },
+    { label: '待付款', value: 0 },
+    { label: '待发货', value: 1 },
+    { label: '已发货', value: 2 },
+    { label: '已签收', value: 3 },
+    { label: '已完成', value: 4 },
+    { label: '已取消', value: -1 },
+]
+const activeStatus = ref(null)
+
+// 点击左侧状态：右侧按状态加载
+function handleStatusClick(status) {
+    activeStatus.value = status
+    filterForm.status = status
+    pager.pageNum = 1
+    handleSearch()
+}
 
 const pager = reactive({
     pageNum: 1,
@@ -382,6 +443,7 @@ function handleReset() {
     filterForm.consignee = ''
     filterForm.phone = ''
     filterForm.status = null
+    activeStatus.value = null
     pager.pageNum = 1
     handleSearch()
 }
@@ -389,6 +451,16 @@ function handleReset() {
 // 查看详情
 const drawerVisible = ref(false)
 const currentOrder = ref(null)
+
+// 订单商品列表（兼容不同字段名）
+function goodsList(row) {
+    return row.orderItemList || row.items || []
+}
+
+// 商品单价（分→元）
+function goodsPrice(item) {
+    return (Number(item.price || 0) / 100).toFixed(2)
+}
 
 // 小票打印状态映射（-2=未开启 -1=未打印 0=已提交 1=打印成功 2=打印失败）
 function ticketStatusText(status) {
@@ -438,9 +510,38 @@ async function handleViewTicketLogs(row) {
 const printingNo = ref('')
 async function handleTicketPrint(row) {
     if (printingNo.value) return
-    printingNo.value = row.orderNo
+    // 先查后台打印记录，若已打印过（已提交/打印成功）则弹窗展示记录并确认
+    let logs = []
     try {
-        const data = await printTicket(row.orderNo)
+        const data = await getPrintLogs({ orderNo: row.orderNo, pageSize: 50 })
+        const result = data && data.data ? data.data : data
+        logs = (result && result.list) || []
+    } catch (e) {
+        // 查询记录失败不阻断打印
+        console.error('查询打印记录失败', e)
+    }
+    if (logs.some(l => l.status === 0 || l.status === 1)) {
+        reprintOrderNo.value = row.orderNo
+        reprintLogs.value = logs
+        reprintDialogVisible.value = true
+        return
+    }
+    doPrintTicket(row.orderNo)
+}
+
+// 重复打印确认框（展示打印记录，点「继续打印」才提交）
+const reprintDialogVisible = ref(false)
+const reprintOrderNo = ref('')
+const reprintLogs = ref([])
+async function handleReprintConfirm() {
+    reprintDialogVisible.value = false
+    await doPrintTicket(reprintOrderNo.value)
+}
+
+async function doPrintTicket(orderNo) {
+    printingNo.value = orderNo
+    try {
+        const data = await printTicket(orderNo)
         const result = data && data.data ? data.data : data
         if (result && result.success === false) {
             toast(result.message || '打印失败', 'error')
@@ -568,6 +669,58 @@ onMounted(() => {
 .order-page {
     height: calc(100vh - 100px);
     overflow: hidden;
+    display: flex;
+    gap: 12px;
+}
+
+.side-panel {
+    width: 200px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+}
+
+.side-section {
+    background: #fff;
+    border-radius: 4px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.side-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #303133;
+    margin-bottom: 2px;
+}
+
+.status-item {
+    padding: 7px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #606266;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.status-item:hover {
+    background: #ecf5ff;
+    color: #409eff;
+}
+
+.status-item.active {
+    background: #409eff;
+    color: #fff;
+    font-weight: 500;
+}
+
+.side-btn {
+    width: 100%;
 }
 
 .content-card {
@@ -595,26 +748,12 @@ onMounted(() => {
     display: flex;
     align-items: center;
     gap: 6px;
-    margin-bottom: 8px;
 }
 
 .page-title {
     font-size: 15px;
     font-weight: 600;
     color: #303133;
-}
-
-.search-form {
-    margin: 0;
-}
-
-.search-form :deep(.el-form-item) {
-    margin-bottom: 0;
-    margin-right: 12px;
-}
-
-.search-form :deep(.el-form-item:last-child) {
-    margin-right: 0;
 }
 
 .content-card :deep(.el-table) {
@@ -645,6 +784,20 @@ onMounted(() => {
 
 .ticket-status {
     cursor: pointer;
+}
+
+.ticket-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    margin-top: 4px;
+}
+
+.ticket-actions :deep(.el-button) {
+    margin-left: 0;
+    padding: 0;
+    height: auto;
 }
 
 .goods-info {
@@ -679,6 +832,11 @@ onMounted(() => {
     font-size: 13px;
     color: #909399;
     flex-shrink: 0;
+}
+
+.goods-amount {
+    margin-top: 2px;
+    font-size: 13px;
 }
 
 .section-title {

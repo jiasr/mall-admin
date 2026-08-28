@@ -7,7 +7,7 @@ const store = createStore({
       // 用户信息
       user: {},
       // 侧边宽度
-      asideWidth: "250px",
+      asideWidth: "160px",
       siteConfig: { site_name: '后台管理系统', logo: '' },
       imageBaseUrl: '',
       menus: [],
@@ -21,7 +21,7 @@ const store = createStore({
     },
     // 展开/缩起侧边
     handleAsideWidth(state) {
-      state.asideWidth = state.asideWidth == "250px" ? "64px" : "250px";
+      state.asideWidth = state.asideWidth == "160px" ? "64px" : "160px";
     },
     SET_MENUS(state, menu) {
       state.menus = menu;

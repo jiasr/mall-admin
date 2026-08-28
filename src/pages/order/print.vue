@@ -33,7 +33,7 @@
 
                 <!-- 商品明细（单行紧凑排版） -->
                 <div v-for="(g, i) in order.orderItemList" :key="i" class="line">
-                    {{ goodsName(g) }} x{{ g.quantity }}  ¥{{ fen2yuan(g.subtotal) }}
+                    {{ goodsName(g) }} x{{ g.quantity }}  ￥{{ fen2yuan(g.subtotal) }}
                 </div>
 
                 <div class="divider">{{ line }}</div>
@@ -42,7 +42,7 @@
                 <div class="line">商品金额: {{ fen2yuan(order.goodsAmount) }}</div>
                 <div class="line">运费: {{ fen2yuan(order.freightAmount) }}</div>
                 <div v-if="(order.discountAmount || 0) > 0" class="line">优惠: -{{ fen2yuan(order.discountAmount) }}</div>
-                <div class="line pay-amount">实付金额: ¥{{ fen2yuan(order.payAmount) }}</div>
+                <div class="line pay-amount">实付金额: ￥{{ fen2yuan(order.payAmount) }}</div>
 
                 <div class="divider">{{ line }}</div>
 
