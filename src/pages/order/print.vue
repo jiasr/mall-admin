@@ -10,80 +10,52 @@
             </el-button>
         </div>
 
-        <!-- 小票内容（57mm 热敏小票） -->
+        <!-- 小票内容（57mm 热敏小票，与飞鹅实际打印所见即所得） -->
         <div class="ticket-wrap">
             <div v-if="loading" class="ticket-loading">加载中...</div>
             <div v-else-if="error" class="ticket-loading">{{ error }}</div>
             <div v-else class="ticket">
                 <!-- 店铺头部 -->
-                <div class="ticket-header">
-                    <div class="shop-name">{{ shop.name || '商城' }}</div>
-                    <div v-if="shop.phone" class="shop-line">电话：{{ shop.phone }}</div>
-                </div>
+                <div class="center-line shop-name">{{ shop.name || '商城' }}</div>
+                <div v-if="shop.phone" class="center-line">电话: {{ shop.phone }}</div>
 
-                <div class="divider">- - - - - - - - - - - - - -</div>
+                <div class="divider">{{ line }}</div>
 
                 <!-- 订单信息 -->
-                <div class="info-row"><span>订单号：</span><span>{{ order.orderNo }}</span></div>
-                <div class="info-row"><span>下单时间：</span><span>{{ order.createTime }}</span></div>
-                <div class="info-row"><span>支付时间：</span><span>{{ order.paidAt || '-' }}</span></div>
-                <div class="info-row">
-                    <span>订单状态：</span><span>{{ statusName }}</span>
-                </div>
-                <div class="info-row">
-                    <span>支付方式：</span><span>{{ paymentName }}</span>
-                </div>
-                <div v-if="order.shippingNo" class="info-row">
-                    <span>物流：</span><span>{{ order.shippingCompany }} {{ order.shippingNo }}</span>
+                <div class="line">订单号: {{ order.orderNo }}</div>
+                <div v-if="order.createTime" class="line">下单时间: {{ order.createTime }}</div>
+                <div v-if="order.paidAt" class="line">支付时间: {{ order.paidAt }}</div>
+                <div class="line">订单状态: {{ statusName }}</div>
+                <div class="line">支付方式: {{ paymentName }}</div>
+                <div v-if="order.shippingNo" class="line">物流: {{ order.shippingCompany }} {{ order.shippingNo }}</div>
+
+                <div class="divider">{{ line }}</div>
+
+                <!-- 商品明细（单行紧凑排版） -->
+                <div v-for="(g, i) in order.orderItemList" :key="i" class="line">
+                    {{ goodsName(g) }} x{{ g.quantity }}  ¥{{ fen2yuan(g.subtotal) }}
                 </div>
 
-                <div class="divider">- - - - - - - - - - - - - -</div>
-
-                <!-- 商品明细 -->
-                <div class="goods-header">
-                    <span class="col-name">商品</span>
-                    <span class="col-price">单价</span>
-                    <span class="col-qty">数量</span>
-                    <span class="col-subtotal">小计</span>
-                </div>
-                <div v-for="(g, i) in order.orderItemList" :key="i" class="goods-item">
-                    <div class="goods-line">
-                        <div class="goods-left">
-                            <span v-if="g.barcode" class="goods-barcode">{{ g.barcode }}|</span>
-                            <span class="goods-title">{{ g.title }}</span>
-                            <span v-if="g.specInfo && g.specInfo.length" class="goods-spec">
-                                ({{ g.specInfo.map(s => s.specValue).join('/') }})
-                            </span>
-                        </div>
-                        <div class="goods-right">
-                            <span class="col-price">{{ fen2yuan(g.price) }}</span>
-                            <span class="col-qty">x{{ g.quantity }}</span>
-                            <span class="col-subtotal">{{ fen2yuan(g.subtotal) }}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="divider">- - - - - - - - - - - - - -</div>
+                <div class="divider">{{ line }}</div>
 
                 <!-- 金额汇总 -->
-                <div class="amount-row"><span>商品金额</span><span>{{ fen2yuan(order.goodsAmount) }}</span></div>
-                <div class="amount-row"><span>运费</span><span>{{ fen2yuan(order.freightAmount) }}</span></div>
-                <div v-if="(order.discountAmount || 0) > 0" class="amount-row">
-                    <span>优惠</span><span>-{{ fen2yuan(order.discountAmount) }}</span>
-                </div>
-                <div class="amount-row pay-amount"><span>实付金额</span><span>￥{{ fen2yuan(order.payAmount) }}</span></div>
+                <div class="line">商品金额: {{ fen2yuan(order.goodsAmount) }}</div>
+                <div class="line">运费: {{ fen2yuan(order.freightAmount) }}</div>
+                <div v-if="(order.discountAmount || 0) > 0" class="line">优惠: -{{ fen2yuan(order.discountAmount) }}</div>
+                <div class="line pay-amount">实付金额: ¥{{ fen2yuan(order.payAmount) }}</div>
 
-                <div class="divider">- - - - - - - - - - - - - -</div>
+                <div class="divider">{{ line }}</div>
 
                 <!-- 收货信息 -->
-                <div class="info-row"><span>收货人：</span><span>{{ order.consignee }} {{ order.phone }}</span></div>
-                <div class="info-row"><span>收货地址：</span><span>{{ order.address }}</span></div>
-                <div v-if="order.remark" class="info-row"><span>备注：</span><span>{{ order.remark }}</span></div>
+                <div class="line">收货人: {{ order.consignee }} {{ order.phone }}</div>
+                <div class="line">收货地址: {{ order.address }}</div>
+                <div v-if="order.remark" class="line">备注: {{ order.remark }}</div>
 
-                <div class="divider">- - - - - - - - - - - - - -</div>
+                <div class="divider">{{ line }}</div>
 
                 <!-- 页脚 -->
-                <div class="ticket-footer">谢谢惠顾，欢迎再次光临！</div>
+                <div class="center-line">谢谢惠顾，欢迎再次光临！</div>
+                <div class="line">打印时间: {{ printTime }}</div>
             </div>
         </div>
     </div>
@@ -113,6 +85,23 @@ const paymentName = computed(() => PAYMENT_NAMES[order.value.paymentMethod] || o
 function fen2yuan(fen) {
     const v = Number(fen || 0)
     return (v / 100).toFixed(2)
+}
+
+// 分隔线：与飞鹅 build_ticket_content 的 LINE 一致（32 个 -）
+const line = '-'.repeat(32)
+
+// 打印时间
+const printTime = (() => {
+    const d = new Date()
+    const p = n => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+})()
+
+// 商品名称：条码|标题(规格)
+function goodsName(g) {
+    const barcode = g.barcode ? g.barcode + '|' : ''
+    const spec = g.specInfo && g.specInfo.length ? `(${g.specInfo.map(s => s.specValue).join('/')})` : ''
+    return barcode + g.title + spec
 }
 
 function handlePrint() {
@@ -187,9 +176,16 @@ onMounted(async () => {
     line-height: 1.6;
 }
 
-.ticket-header {
+/* 与飞鹅 build_ticket_content 排版一致：普通行左对齐，头部/页脚居中 */
+.line {
+    font-size: 9px;
+    word-break: break-all;
+    white-space: pre-wrap;
+}
+
+.center-line {
     text-align: center;
-    margin-bottom: 4px;
+    font-size: 9px;
 }
 
 .shop-name {
@@ -197,110 +193,17 @@ onMounted(async () => {
     font-weight: bold;
 }
 
-.shop-line {
-    font-size: 9px;
-}
-
 .divider {
     text-align: center;
     color: #333;
-    letter-spacing: 1px;
     margin: 3px 0;
     font-size: 8px;
-}
-
-.info-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 9px;
-}
-
-.info-row span:last-child {
-    text-align: right;
     word-break: break-all;
-}
-
-.goods-header {
-    display: flex;
-    font-weight: bold;
-    padding: 2px 0;
-    border-bottom: 1px solid #000;
-}
-
-.col-name {
-    flex: 1;
-}
-
-.col-price {
-    width: 38px;
-    text-align: right;
-}
-
-.col-qty {
-    width: 26px;
-    text-align: center;
-}
-
-.col-subtotal {
-    width: 42px;
-    text-align: right;
-}
-
-.goods-item {
-    padding: 2px 0;
-    border-bottom: 1px dashed #ccc;
-}
-
-.goods-line {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    font-size: 9px;
-}
-
-.goods-left {
-    flex: 1;
-    word-break: break-all;
-    padding-right: 2px;
-}
-
-.goods-barcode {
-    font-weight: bold;
-    font-size: 8px;
-    letter-spacing: 0;
-    white-space: nowrap;
-}
-
-.goods-title {
-    font-size: 9px;
-}
-
-.goods-spec {
-    color: #666;
-    font-size: 8px;
-}
-
-.goods-right {
-    display: flex;
-    flex-shrink: 0;
-}
-
-.amount-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 9px;
-    padding: 1px 0;
 }
 
 .pay-amount {
     font-size: 12px;
     font-weight: bold;
-}
-
-.ticket-footer {
-    text-align: center;
-    margin-top: 6px;
-    font-size: 9px;
 }
 
 /* 打印样式：只打印小票 */

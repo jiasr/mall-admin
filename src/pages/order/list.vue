@@ -87,8 +87,23 @@
 
                 <el-table-column label="小票" width="90" align="center">
                     <template #default="scope">
+                        <!-- 未开启打印（飞鹅未配置/未启用）：灰色标签，不可点 -->
+                        <el-tag
+                            v-if="scope.row.ticketStatus === -2"
+                            type="info"
+                            size="small"
+                            class="ticket-status"
+                        >
+                            {{ ticketStatusText(scope.row.ticketStatus) }}
+                        </el-tag>
+                        <!-- 已开启但未打印：显示 - -->
+                        <span
+                            v-else-if="scope.row.ticketStatus === undefined || scope.row.ticketStatus === -1"
+                            class="phone-text"
+                        >-</span>
+                        <!-- 有打印记录：可点击查看打印记录 -->
                         <el-tooltip
-                            v-if="scope.row.ticketStatus !== undefined && scope.row.ticketStatus !== -1"
+                            v-else
                             :content="'点击查看打印记录' + (scope.row.ticketTime ? '（' + scope.row.ticketTime + '）' : '')"
                         >
                             <el-tag
@@ -100,7 +115,6 @@
                                 {{ ticketStatusText(scope.row.ticketStatus) }}
                             </el-tag>
                         </el-tooltip>
-                        <span v-else class="phone-text">-</span>
                     </template>
                 </el-table-column>
 
@@ -369,14 +383,14 @@ function handleReset() {
 const drawerVisible = ref(false)
 const currentOrder = ref(null)
 
-// 小票打印状态映射（-1=未打印 0=已提交 1=打印成功 2=打印失败）
+// 小票打印状态映射（-2=未开启 -1=未打印 0=已提交 1=打印成功 2=打印失败）
 function ticketStatusText(status) {
-    const map = { '-1': '未打印', 0: '已提交', 1: '成功', 2: '失败' }
+    const map = { '-2': '未开启', '-1': '未打印', 0: '已提交', 1: '成功', 2: '失败' }
     return map[status] ?? '未打印'
 }
 
 function ticketTagType(status) {
-    const map = { '-1': 'info', 0: 'warning', 1: 'success', 2: 'danger' }
+    const map = { '-2': 'info', '-1': 'info', 0: 'warning', 1: 'success', 2: 'danger' }
     return map[status] ?? 'info'
 }
 
