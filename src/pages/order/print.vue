@@ -56,6 +56,12 @@
                 <!-- 页脚 -->
                 <div class="center-line">谢谢惠顾，欢迎再次光临！</div>
                 <div class="line">打印时间: {{ printTime }}</div>
+
+                <!-- 订单二维码：微信扫码查看订单号 -->
+                <div class="center-line qr-area" v-if="qrDataUrl">
+                    <img :src="qrDataUrl" class="qr-img" alt="订单二维码" />
+                    <div class="line">扫码查看订单号: {{ order.orderNo }}</div>
+                </div>
             </div>
         </div>
     </div>
@@ -65,6 +71,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Printer, Back } from '@element-plus/icons-vue'
+import QRCode from 'qrcode'
 import { getPrintTicket } from '~/api/order'
 
 const route = useRoute()
@@ -74,6 +81,18 @@ const loading = ref(true)
 const error = ref('')
 const shop = ref({})
 const order = ref({})
+const qrDataUrl = ref('')
+
+// 生成订单号二维码（使用本地 qrcode 依赖，无需 CDN）
+function genQrCode(text) {
+    QRCode.toDataURL(text, { width: 132, margin: 1, errorCorrectionLevel: 'M' })
+        .then((url) => {
+            qrDataUrl.value = url
+        })
+        .catch((err) => {
+            console.error('二维码生成失败', err)
+        })
+}
 
 const STATUS_NAMES = { 0: '待付款', 1: '待发货', 2: '待收货', 3: '已完成', 4: '已取消' }
 const PAYMENT_NAMES = { wechat: '微信支付', '': '未支付' }
@@ -128,6 +147,7 @@ onMounted(async () => {
         } else if (result && result.order) {
             shop.value = result.shop || {}
             order.value = result.order
+            genQrCode(result.order.orderNo || orderNo)
         } else {
             error.value = '数据加载失败'
         }
@@ -204,6 +224,17 @@ onMounted(async () => {
 .pay-amount {
     font-size: 12px;
     font-weight: bold;
+}
+
+.qr-area {
+    margin-top: 8px;
+}
+
+.qr-img {
+    width: 120px;
+    height: 120px;
+    display: block;
+    margin: 0 auto;
 }
 
 /* 打印样式：只打印小票 */
