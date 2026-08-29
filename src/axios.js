@@ -34,9 +34,21 @@ service.interceptors.response.use(function (response) {
         if (!resp.flag) {
             const msg = resp.exceptionMsg || "请求失败"
             toast(msg, "error")
+            // 登录过期：清除登录态并跳回登录页
+            if (resp.errCode === 401) {
+                store.dispatch("logout").finally(() => location.reload())
+            }
             return Promise.reject(new Error(msg))
         }
-        return resp.resData
+        // 兼容个别接口（如 admin/getinfo）把 401 失败体包装在 resData 内
+        const data = resp.resData
+        if (data && data.flag === false && data.errCode === 401) {
+            const msg = data.errMessage || "登录已过期"
+            toast(msg, "error")
+            store.dispatch("logout").finally(() => location.reload())
+            return Promise.reject(new Error(msg))
+        }
+        return data
     }
     // admin 格式，原逻辑
     return resp.data
