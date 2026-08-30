@@ -20,9 +20,24 @@ export function processOrder(orderNo, data) {
     return axios.post(`/mall/v1/order/admin/process/${orderNo}`, data)
 }
 
-// 删除订单
+// 删除订单（软删除，进回收站）
 export function deleteOrder(orderNo) {
     return axios.post(`/mall/v1/order/admin/delete/${orderNo}`)
+}
+
+// 回收站订单列表
+export function getRecycleList(params) {
+    return axios.get("/mall/v1/order/admin/recycle/list", { params })
+}
+
+// 回收站恢复订单
+export function restoreOrder(orderNo) {
+    return axios.post(`/mall/v1/order/admin/recycle/restore/${orderNo}`)
+}
+
+// 回收站彻底删除订单
+export function purgeOrder(orderNo) {
+    return axios.post(`/mall/v1/order/admin/recycle/purge/${orderNo}`)
 }
 
 // 退款

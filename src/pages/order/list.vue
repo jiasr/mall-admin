@@ -128,7 +128,8 @@
 
                 <el-table-column label="订单状态" width="90" align="center">
                     <template #default="scope">
-                        <el-tag :type="statusTagType(scope.row.status)" size="small">
+                        <el-tag v-if="isRecycle" type="info" size="small">已删除</el-tag>
+                        <el-tag v-else :type="statusTagType(scope.row.status)" size="small">
                             {{ statusText(scope.row.status) }}
                         </el-tag>
                     </template>
@@ -140,41 +141,62 @@
                     </template>
                 </el-table-column>
 
+                <el-table-column :label="isRecycle ? '删除时间' : '状态时间'" width="170" align="center">
+                    <template #default="scope">
+                        {{ isRecycle ? (scope.row.deletedAt || scope.row.deleted_at || '-') : statusTimeText(scope.row) }}
+                    </template>
+                </el-table-column>
+
                 <el-table-column label="操作" min-width="220" align="center">
                     <template #default="scope">
-                        <el-button type="primary" size="small" link @click="handleView(scope.row)">
-                            <el-icon><View /></el-icon> 查看
-                        </el-button>
-                        <el-button
-                            v-if="scope.row.status === 1"
-                            type="success"
-                            size="small"
-                            link
-                            @click="handleShip(scope.row)"
-                        >
-                            <el-icon><Top /></el-icon> 发货
-                        </el-button>
-                        <el-button
-                            v-if="scope.row.status === 0"
-                            type="warning"
-                            size="small"
-                            link
-                            @click="handleCancel(scope.row)"
-                        >
-                            <el-icon><Close /></el-icon> 取消
-                        </el-button>
-                        <el-button
-                            v-if="scope.row.status === 1"
-                            type="danger"
-                            size="small"
-                            link
-                            @click="handleRefund(scope.row)"
-                        >
-                            <el-icon><Warning /></el-icon> 退款
-                        </el-button>
-                        <el-button type="danger" size="small" link @click="handleDelete(scope.row)">
-                            <el-icon><Delete /></el-icon> 删除
-                        </el-button>
+                        <!-- 回收站：查看 / 恢复 / 彻底删除 -->
+                        <template v-if="isRecycle">
+                            <el-button type="primary" size="small" link @click="handleView(scope.row)">
+                                <el-icon><View /></el-icon> 查看
+                            </el-button>
+                            <el-button type="success" size="small" link @click="handleRestore(scope.row)">
+                                <el-icon><RefreshLeft /></el-icon> 恢复
+                            </el-button>
+                            <el-button type="danger" size="small" link @click="handlePurge(scope.row)">
+                                <el-icon><Delete /></el-icon> 彻底删除
+                            </el-button>
+                        </template>
+                        <!-- 正常列表 -->
+                        <template v-else>
+                            <el-button type="primary" size="small" link @click="handleView(scope.row)">
+                                <el-icon><View /></el-icon> 查看
+                            </el-button>
+                            <el-button
+                                v-if="scope.row.status === 1"
+                                type="success"
+                                size="small"
+                                link
+                                @click="handleShip(scope.row)"
+                            >
+                                <el-icon><Top /></el-icon> 发货
+                            </el-button>
+                            <el-button
+                                v-if="scope.row.status === 0"
+                                type="warning"
+                                size="small"
+                                link
+                                @click="handleCancel(scope.row)"
+                            >
+                                <el-icon><Close /></el-icon> 取消
+                            </el-button>
+                            <el-button
+                                v-if="scope.row.status === 1"
+                                type="danger"
+                                size="small"
+                                link
+                                @click="handleRefund(scope.row)"
+                            >
+                                <el-icon><Warning /></el-icon> 退款
+                            </el-button>
+                            <el-button type="danger" size="small" link @click="handleDelete(scope.row)">
+                                <el-icon><Delete /></el-icon> 删除
+                            </el-button>
+                        </template>
                     </template>
                 </el-table-column>
             </el-table>
@@ -206,7 +228,10 @@
                         </el-tag>
                     </el-descriptions-item>
                     <el-descriptions-item label="下单时间">{{ currentOrder.createTime || currentOrder.createdAt }}</el-descriptions-item>
-                    <el-descriptions-item label="支付时间">{{ currentOrder.payTime || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="支付时间">{{ currentOrder.paidAt || currentOrder.payTime || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="发货时间">{{ currentOrder.shippedAt || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="完成时间">{{ currentOrder.completedAt || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="取消时间">{{ currentOrder.canceledAt || '-' }}</el-descriptions-item>
                     <el-descriptions-item label="商品总额">¥{{ ((currentOrder.totalAmount || 0) / 100).toFixed(2) }}</el-descriptions-item>
                     <el-descriptions-item label="运费">¥{{ ((currentOrder.freightAmount || currentOrder.shippingFee || 0) / 100).toFixed(2) }}</el-descriptions-item>
                     <el-descriptions-item label="实付金额" :span="2">
@@ -331,6 +356,17 @@
             </template>
         </el-dialog>
 
+        <!-- 小票预览弹窗（直接展示小票内容，不嵌页面） -->
+        <el-dialog v-model="previewDialogVisible" title="小票预览" width="420px" destroy-on-close align-center>
+            <div v-loading="previewLoading" class="ticket-preview-wrap">
+                <div v-if="previewError" class="preview-error">{{ previewError }}</div>
+                <TicketContent v-else-if="previewOrder" :shop="previewShop" :order="previewOrder" />
+            </div>
+            <template #footer>
+                <el-button @click="previewDialogVisible = false">关闭</el-button>
+            </template>
+        </el-dialog>
+
         <!-- 发货对话框 -->
         <el-dialog v-model="shipDialogVisible" title="订单发货" width="450px" destroy-on-close>
             <el-form ref="shipFormRef" :model="shipForm" :rules="shipFormRules" label-width="80px">
@@ -358,16 +394,15 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { Search, Refresh, Picture, View, Top, Close, Delete, Warning, Printer, Tickets } from '@element-plus/icons-vue'
-import { getOrderList, getOrderDetail, processOrder, deleteOrder, refundOrder } from '~/api/order'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { Search, Refresh, Picture, View, Top, Close, Delete, Warning, Printer, Tickets, RefreshLeft } from '@element-plus/icons-vue'
+import { getOrderList, getOrderDetail, processOrder, deleteOrder, refundOrder, getPrintTicket, getRecycleList, restoreOrder, purgeOrder } from '~/api/order'
 import { printTicket, getPrintLogs } from '~/api/printer'
+import TicketContent from '~/components/TicketContent.vue'
 import { toast, showModal } from '~/composables/util'
 
 const loading = ref(false)
 const tableData = ref([])
-const router = useRouter()
 
 const filterForm = reactive({
     orderNo: '',
@@ -376,22 +411,24 @@ const filterForm = reactive({
     status: null,
 })
 
-// 订单状态平铺列表（value 为 null 表示全部）
+// 订单状态平铺列表（value 为 null 表示全部；编号与后端 order_status 对齐：0待付款 1待发货 2已发货 3已完成 4已取消）
 const statusList = [
     { label: '全部', value: null },
     { label: '待付款', value: 0 },
     { label: '待发货', value: 1 },
     { label: '已发货', value: 2 },
-    { label: '已签收', value: 3 },
-    { label: '已完成', value: 4 },
-    { label: '已取消', value: -1 },
+    { label: '已完成', value: 3 },
+    { label: '已取消', value: 4 },
+    { label: '回收站', value: 'recycle' },
 ]
 const activeStatus = ref(null)
+// 是否为回收站模式
+const isRecycle = computed(() => activeStatus.value === 'recycle')
 
 // 点击左侧状态：右侧按状态加载
 function handleStatusClick(status) {
     activeStatus.value = status
-    filterForm.status = status
+    filterForm.status = status === 'recycle' ? null : status
     pager.pageNum = 1
     handleSearch()
 }
@@ -402,15 +439,27 @@ const pager = reactive({
     total: 0,
 })
 
-// 订单状态映射
+// 订单状态映射（与后端 order_status 对齐：0待付款 1待发货 2已发货 3已完成 4已取消）
 function statusText(status) {
-    const map = { '-1': '已取消', 0: '待付款', 1: '待发货', 2: '已发货', 3: '已签收', 4: '已完成' }
+    const map = { 0: '待付款', 1: '待发货', 2: '已发货', 3: '已完成', 4: '已取消' }
     return map[status] ?? '未知'
 }
 
 function statusTagType(status) {
-    const map = { '-1': 'info', 0: 'warning', 1: 'danger', 2: 'primary', 3: 'success', 4: 'success' }
+    const map = { 0: 'warning', 1: 'danger', 2: 'primary', 3: 'success', 4: 'info' }
     return map[status] ?? 'info'
+}
+
+// 当前订单状态对应的最新变更时间（状态时间）
+function statusTimeText(row) {
+    const map = {
+        0: row.createTime || row.createdAt,  // 待付款 → 下单时间
+        1: row.paidAt || row.payTime,        // 待发货(已付款) → 支付时间
+        2: row.shippedAt,                    // 已发货 → 发货时间
+        3: row.completedAt,                  // 已完成 → 完成时间
+        4: row.canceledAt,                   // 已取消 → 取消时间
+    }
+    return map[row.status] || row.createTime || row.createdAt || '-'
 }
 
 // 搜索
@@ -426,7 +475,9 @@ async function handleSearch() {
         if (filterForm.phone) params.phone = filterForm.phone
         if (filterForm.status !== null && filterForm.status !== '') params.status = filterForm.status
 
-        const data = await getOrderList(params)
+        const data = isRecycle.value
+            ? await getRecycleList(params)
+            : await getOrderList(params)
         const list = data && data.data ? data.data : data
         tableData.value = list.list || list.records || []
         pager.total = list.total || list.totalCount || 0
@@ -556,11 +607,35 @@ async function doPrintTicket(orderNo) {
     }
 }
 
-// 打印小票
-function handlePrint(row) {
-    // Hash 模式路由，需用 router.resolve 生成带 # 的 URL
-    const url = router.resolve(`/order/print?orderNo=${row.orderNo}`).href
-    window.open(url)
+// 小票预览（弹窗内直接渲染小票内容，不嵌 iframe、不提供打印）
+const previewDialogVisible = ref(false)
+const previewLoading = ref(false)
+const previewError = ref('')
+const previewShop = ref({})
+const previewOrder = ref(null)
+async function handlePrint(row) {
+    previewDialogVisible.value = true
+    previewLoading.value = true
+    previewError.value = ''
+    previewShop.value = {}
+    previewOrder.value = null
+    try {
+        const data = await getPrintTicket(row.orderNo)
+        const result = data && data.data ? data.data : data
+        if (result && result.success === false) {
+            previewError.value = result.message || '订单不存在'
+        } else if (result && result.order) {
+            previewShop.value = result.shop || {}
+            previewOrder.value = result.order
+        } else {
+            previewError.value = '数据加载失败'
+        }
+    } catch (e) {
+        console.error('加载小票数据失败', e)
+        previewError.value = '加载失败：' + (e.message || '网络异常')
+    } finally {
+        previewLoading.value = false
+    }
 }
 
 async function handleView(row) {
@@ -649,14 +724,40 @@ async function handleRefund(row) {
 
 // 删除订单
 async function handleDelete(row) {
-    const confirmed = await showModal('确定要删除该订单吗？此操作不可恢复！', 'error', '删除确认').then(() => true).catch(() => false)
+    const confirmed = await showModal('确定要删除该订单吗？删除后将移入回收站，可在回收站中恢复！', 'warning', '删除确认').then(() => true).catch(() => false)
     if (!confirmed) return
     try {
         await deleteOrder(row.orderNo)
-        toast('删除成功', 'success')
+        toast('已移入回收站', 'success')
         handleSearch()
     } catch (e) {
         console.error('删除失败', e)
+    }
+}
+
+// 回收站：恢复订单
+async function handleRestore(row) {
+    const confirmed = await showModal('确定要恢复该订单吗？恢复后将重新出现在订单列表中。', 'warning', '恢复确认').then(() => true).catch(() => false)
+    if (!confirmed) return
+    try {
+        await restoreOrder(row.orderNo)
+        toast('已恢复', 'success')
+        handleSearch()
+    } catch (e) {
+        console.error('恢复失败', e)
+    }
+}
+
+// 回收站：彻底删除（物理删除，不可恢复）
+async function handlePurge(row) {
+    const confirmed = await showModal('彻底删除后不可恢复，确定要删除吗？', 'error', '彻底删除确认').then(() => true).catch(() => false)
+    if (!confirmed) return
+    try {
+        await purgeOrder(row.orderNo)
+        toast('已彻底删除', 'success')
+        handleSearch()
+    } catch (e) {
+        console.error('彻底删除失败', e)
     }
 }
 
@@ -724,6 +825,8 @@ onMounted(() => {
 }
 
 .content-card {
+    flex: 1;
+    min-width: 0;
     height: 100%;
     border: none;
     display: flex;
@@ -762,6 +865,23 @@ onMounted(() => {
 
 .content-card :deep(.el-table__body-wrapper) {
     overflow-y: auto;
+}
+
+.ticket-preview-wrap {
+    max-width: 320px;
+    margin: 0 auto;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 20px;
+    min-height: 120px;
+}
+
+.preview-error {
+    padding: 40px 0;
+    text-align: center;
+    color: #909399;
+    font-size: 13px;
 }
 
 .pagination {
