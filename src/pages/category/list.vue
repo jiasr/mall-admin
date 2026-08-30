@@ -40,6 +40,11 @@
 
             <el-table-column prop="name" label="分类名称" min-width="240">
                 <template #default="scope">
+                    <!-- 一级叶子分类：补上与展开箭头等宽的占位，保证文字起点与有子分类的行对齐 -->
+                    <span
+                        v-if="getLevel(scope.row) === 1 && !(scope.row.children && scope.row.children.length)"
+                        class="leaf-expand-placeholder"
+                    ></span>
                     <el-image
                         v-if="scope.row.thumbnail"
                         :src="imgUrl(scope.row.thumbnail)"
@@ -635,5 +640,11 @@ onBeforeUnmount(() => {
     align-items: center;
     flex-wrap: wrap;
     gap: 6px;
+}
+
+/* 一级叶子分类：补上与展开箭头等宽的占位（12px 图标 + 8px 间距） */
+.leaf-expand-placeholder {
+    display: inline-block;
+    width: 20px;
 }
 </style>
