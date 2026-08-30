@@ -80,7 +80,16 @@
                     </div>
 
                     <!-- 商品表格 -->
-                    <el-table :data="tableData" border size="small" style="width: 100%" v-loading="loading">
+                    <el-table
+                        :data="tableData"
+                        border
+                        size="small"
+                        style="width: 100%"
+                        v-loading="loading"
+                        @selection-change="handleSelectionChange"
+                    >
+                        <!-- 多选列：用于批量移动分类 -->
+                        <el-table-column type="selection" width="44" />
                         <!-- 展开行：展示该 SPU 下每个 SKU 关联的进销存商品信息 -->
                         <el-table-column type="expand" width="48">
                             <template #default="scope">
@@ -171,13 +180,16 @@
 
                         <el-table-column prop="soldNum" label="销量" width="70" align="center" />
 
-                        <el-table-column label="操作" width="240" fixed="right" align="center">
+                        <el-table-column label="操作" width="280" fixed="right" align="center">
                             <template #default="scope">
                                 <el-button type="primary" size="small" link @click="handleView(scope.row)">
                                     <el-icon><View /></el-icon> 查看
                                 </el-button>
                                 <el-button type="primary" size="small" link @click="handleEdit(scope.row)">
                                     <el-icon><Edit /></el-icon> 编辑
+                                </el-button>
+                                <el-button type="warning" size="small" link @click="openMoveDialog(scope.row)">
+                                    <el-icon><Rank /></el-icon> 移动
                                 </el-button>
                                 <el-button
                                     v-if="scope.row.isPutOnSale !== 0"
@@ -271,14 +283,34 @@
                 <div class="detail-content" v-if="currentGoods.detailContent" v-html="currentGoods.detailContent"></div>
             </template>
         </el-drawer>
+
+        <!-- 移动分类弹窗 -->
+        <el-dialog v-model="moveDialogVisible" title="移动分类" width="480px" destroy-on-close>
+            <div class="move-desc">
+                将 <b class="move-count">{{ moveTargetCount }}</b> 个商品移动到以下分类：
+            </div>
+            <el-tree-select
+                v-model="moveForm.categoryId"
+                :data="categoryOptions"
+                :props="{ label: 'name', value: 'id', children: 'children' }"
+                placeholder="选择目标分类"
+                check-strictly
+                clearable
+                style="width: 100%"
+            />
+            <template #footer>
+                <el-button @click="moveDialogVisible = false">取消</el-button>
+                <el-button type="primary" :loading="moveLoading" @click="handleMoveCategory">确定移动</el-button>
+            </template>
+        </el-dialog>
     </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, onActivated, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Refresh, Picture, View, Plus, Edit, Delete, Top, Bottom, Folder, List, DocumentCopy } from '@element-plus/icons-vue'
-import { getGoodsList, getGoodsDetail, deleteGoods, putOnSale, pullOffSale } from '~/api/goods'
+import { Search, Refresh, Picture, View, Plus, Edit, Delete, Top, Bottom, Folder, List, DocumentCopy, Rank } from '@element-plus/icons-vue'
+import { getGoodsList, getGoodsDetail, deleteGoods, putOnSale, pullOffSale, moveGoodsCategory } from '~/api/goods'
 import { getCategoryTree } from '~/api/category'
 import { toast, showModal } from '~/composables/util'
 
@@ -424,6 +456,57 @@ async function handleDelete(row) {
         if (e !== 'cancel') {
             console.error('删除失败', e)
         }
+    }
+}
+
+// ===== 移动分类 =====
+const selectedRows = ref([])
+
+// 勾选变化
+function handleSelectionChange(rows) {
+    selectedRows.value = rows
+}
+
+// 打开移动分类弹窗：row 传单个商品，不传则使用表格勾选
+function openMoveDialog(row) {
+    if (row) {
+        selectedRows.value = [row]
+    }
+    if (!selectedRows.value.length) {
+        toast('请先勾选要移动的商品', 'warning')
+        return
+    }
+    moveTargetCount.value = selectedRows.value.length
+    moveForm.categoryId = null
+    moveDialogVisible.value = true
+}
+
+const moveDialogVisible = ref(false)
+const moveLoading = ref(false)
+const moveTargetCount = ref(0)
+const moveForm = reactive({ categoryId: null })
+
+// 执行移动分类
+async function handleMoveCategory() {
+    if (!moveForm.categoryId) {
+        toast('请选择目标分类', 'warning')
+        return
+    }
+    moveLoading.value = true
+    try {
+        await moveGoodsCategory({
+            spuIds: selectedRows.value.map((r) => r.spuId),
+            categoryId: moveForm.categoryId,
+        })
+        toast('移动成功', 'success')
+        moveDialogVisible.value = false
+        selectedRows.value = []
+        handleSearch()
+        loadCategoryOptions()
+    } catch (e) {
+        console.error('移动分类失败', e)
+    } finally {
+        moveLoading.value = false
     }
 }
 
@@ -684,5 +767,16 @@ onActivated(() => {
 .detail-content :deep(img) {
     max-width: 100%;
     height: auto;
+}
+
+.move-desc {
+    margin-bottom: 12px;
+    font-size: 14px;
+    color: #606266;
+}
+
+.move-count {
+    color: #e6a23c;
+    font-size: 16px;
 }
 </style>

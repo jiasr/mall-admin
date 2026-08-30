@@ -34,3 +34,8 @@ export function putOnSale(spuId) {
 export function pullOffSale(spuId) {
     return axios.post(`/mall/v1/goods/admin/goods/pullOffSale/${spuId}`)
 }
+
+// 批量移动商品分类
+export function moveGoodsCategory(data) {
+    return axios.post("/mall/v1/goods/admin/goods/move-category", data)
+}
