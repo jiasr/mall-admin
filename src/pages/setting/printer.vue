@@ -332,7 +332,7 @@ onActivated(() => {
 
 <style scoped>
 .printer-page {
-    max-width: 900px;
+    width: 100%;
 }
 
 .section-title {

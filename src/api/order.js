@@ -5,6 +5,11 @@ export function getOrderList(params) {
     return axios.get("/mall/v1/order/admin/list", { params })
 }
 
+// 获取订单各状态数量统计（左侧状态栏角标）
+export function getOrderStatusCount() {
+    return axios.get("/mall/v1/order/admin/status-count")
+}
+
 // 获取订单详情
 export function getOrderDetail(orderNo) {
     return axios.get("/mall/v1/order/admin/detail", { params: { orderNo } })

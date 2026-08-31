@@ -11,7 +11,10 @@
                     :class="{ active: activeStatus === s.value }"
                     @click="handleStatusClick(s.value)"
                 >
-                    {{ s.label }}
+                    <span class="status-label">{{ s.label }}</span>
+                    <span v-if="statusCounts[countKey(s.value)] !== undefined" class="status-count">
+                        {{ statusCounts[countKey(s.value)] }}
+                    </span>
                 </div>
             </div>
             <div class="side-section">
@@ -65,9 +68,28 @@
                     </template>
                 </el-table-column>
 
-                <el-table-column label="订单金额" width="120" align="center">
+                <el-table-column label="订单金额" width="160" align="center">
                     <template #default="scope">
-                        <span class="price">¥{{ ((scope.row.totalAmount || scope.row.payAmount || 0) / 100).toFixed(2) }}</span>
+                        <div class="amount-cell">
+                            <div class="amount-row">
+                                <span class="amount-label">总额</span>
+                                <span>¥{{ fen2yuan(scope.row.goodsAmount ?? scope.row.totalAmount) }}</span>
+                            </div>
+                            <div class="amount-row discount-row">
+                                <span class="amount-label">优惠</span>
+                                <span>-¥{{ fen2yuan(scope.row.discountAmount) }}</span>
+                            </div>
+                            <div class="amount-row">
+                                <span class="amount-label">运费</span>
+                                <span>¥{{ fen2yuan(scope.row.freightAmount) }}</span>
+                            </div>
+                            <div class="amount-row pay-row">
+                                <span class="amount-label">实付</span>
+                                <span v-if="scope.row.payStatus === 2" class="refunded-tag">已退款</span>
+                                <span v-else-if="scope.row.payStatus === 0" class="unpaid-text">未付款</span>
+                                <span v-else class="price">¥{{ fen2yuan(scope.row.payAmount) }}</span>
+                            </div>
+                        </div>
                     </template>
                 </el-table-column>
 
@@ -136,13 +158,7 @@
                     </template>
                 </el-table-column>
 
-                <el-table-column :label="isRecycle ? '删除时间' : '下单时间'" width="160" align="center">
-                    <template #default="scope">
-                        {{ isRecycle ? (scope.row.deletedAt || scope.row.deleted_at || '-') : (scope.row.createTime || scope.row.createdAt) }}
-                    </template>
-                </el-table-column>
-
-                <!-- 完整流程时间线：点击弹出时间线弹窗 -->
+                <!-- 完整流程时间线：点击弹出时间线弹窗（含下单/支付/发货/完成/取消/删除时间） -->
                 <el-table-column label="流程时间" width="120" align="center">
                     <template #default="scope">
                         <el-button
@@ -428,7 +444,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { Search, Refresh, Picture, View, Top, Close, Delete, Warning, Printer, Tickets, RefreshLeft, Clock } from '@element-plus/icons-vue'
-import { getOrderList, getOrderDetail, processOrder, deleteOrder, refundOrder, getPrintTicket, getRecycleList, restoreOrder, purgeOrder } from '~/api/order'
+import { getOrderList, getOrderDetail, processOrder, deleteOrder, refundOrder, getPrintTicket, getRecycleList, restoreOrder, purgeOrder, getOrderStatusCount } from '~/api/order'
 import { printTicket, getPrintLogs } from '~/api/printer'
 import TicketContent from '~/components/TicketContent.vue'
 import { toast, showModal } from '~/composables/util'
@@ -449,7 +465,8 @@ const statusList = [
     { label: '待付款', value: 0 },
     { label: '待发货', value: 1 },
     { label: '已发货', value: 2 },
-    { label: '已完成/已取消', value: '3,4' },
+    { label: '已完成', value: 3 },
+    { label: '已取消', value: 4 },
     { label: '回收站', value: 'recycle' },
 ]
 const activeStatus = ref(null)
@@ -493,6 +510,29 @@ function flowTimeList(row) {
     return steps.filter((s) => s.time)
 }
 
+// 各状态订单数量（左侧状态栏角标）
+const statusCounts = reactive({})
+
+// 状态值 → 数量统计 key（null=全部 recycle=回收站，其余为状态数字字符串）
+function countKey(status) {
+    if (status === null) return 'all'
+    if (status === 'recycle') return 'recycle'
+    return String(status)
+}
+
+// 加载各状态订单数量（不阻塞列表加载）
+async function loadStatusCounts() {
+    try {
+        const data = await getOrderStatusCount()
+        const result = data && data.data ? data.data : data
+        if (result && typeof result === 'object') {
+            Object.assign(statusCounts, result)
+        }
+    } catch (e) {
+        console.error('加载订单状态数量失败', e)
+    }
+}
+
 // 搜索
 async function handleSearch() {
     loading.value = true
@@ -517,6 +557,8 @@ async function handleSearch() {
     } finally {
         loading.value = false
     }
+    // 顺带刷新左侧各状态数量
+    loadStatusCounts()
 }
 
 // 重置
@@ -542,6 +584,11 @@ function goodsList(row) {
 // 商品单价（分→元）
 function goodsPrice(item) {
     return (Number(item.price || 0) / 100).toFixed(2)
+}
+
+// 分 → 元
+function fen2yuan(fen) {
+    return (Number(fen || 0) / 100).toFixed(2)
 }
 
 // 小票打印状态映射（-2=未开启 -1=未打印 0=已提交 1=打印成功 2=打印失败）
@@ -853,6 +900,10 @@ onMounted(() => {
 }
 
 .status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
     padding: 7px 12px;
     border-radius: 4px;
     cursor: pointer;
@@ -860,6 +911,26 @@ onMounted(() => {
     color: #606266;
     transition: all 0.2s;
     user-select: none;
+}
+
+.status-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.status-count {
+    flex-shrink: 0;
+    font-size: 12px;
+    padding: 0 6px;
+    border-radius: 8px;
+    background: #ecf5ff;
+    color: #409eff;
+}
+
+.status-item.active .status-count {
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
 }
 
 .status-item:hover {
@@ -947,6 +1018,48 @@ onMounted(() => {
 
 .price {
     color: #f56c6c;
+    font-weight: 600;
+}
+
+/* 订单金额列：完整展示金额构成（总额/优惠/运费/实付） */
+.amount-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.amount-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 12px;
+    color: #606266;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+.amount-row .amount-label {
+    color: #909399;
+}
+
+.discount-row span:last-child {
+    color: #e6a23c;
+}
+
+.pay-row {
+    border-top: 1px dashed #ebeef5;
+    padding-top: 2px;
+}
+
+/* 已退款：绿色标识，替代实付金额避免误读 */
+.refunded-tag {
+    color: #67c23a;
+    font-weight: 600;
+}
+
+/* 未付款：灰色标识（含未付款取消的订单） */
+.unpaid-text {
+    color: #c0c4cc;
     font-weight: 600;
 }
 
