@@ -65,16 +65,17 @@
                     </template>
                 </el-table-column>
 
-                <el-table-column label="收货人" width="140" align="center">
-                    <template #default="scope">
-                        <div>{{ scope.row.consignee || scope.row.name }}</div>
-                        <div class="phone-text">{{ scope.row.phone || scope.row.mobile }}</div>
-                    </template>
-                </el-table-column>
-
                 <el-table-column label="订单金额" width="120" align="center">
                     <template #default="scope">
                         <span class="price">¥{{ ((scope.row.totalAmount || scope.row.payAmount || 0) / 100).toFixed(2) }}</span>
+                    </template>
+                </el-table-column>
+
+                <el-table-column label="收货信息" width="180" align="center">
+                    <template #default="scope">
+                        <div>{{ scope.row.consignee || scope.row.name }}</div>
+                        <div class="phone-text">{{ scope.row.phone || scope.row.mobile }}</div>
+                        <div class="phone-text address-text">{{ scope.row.address || scope.row.fullAddress || '-' }}</div>
                     </template>
                 </el-table-column>
 
@@ -135,15 +136,25 @@
                     </template>
                 </el-table-column>
 
-                <el-table-column label="下单时间" width="160" align="center">
+                <el-table-column :label="isRecycle ? '删除时间' : '下单时间'" width="160" align="center">
                     <template #default="scope">
-                        {{ scope.row.createTime || scope.row.createdAt }}
+                        {{ isRecycle ? (scope.row.deletedAt || scope.row.deleted_at || '-') : (scope.row.createTime || scope.row.createdAt) }}
                     </template>
                 </el-table-column>
 
-                <el-table-column :label="isRecycle ? '删除时间' : '状态时间'" width="170" align="center">
+                <!-- 完整流程时间线：点击弹出时间线弹窗 -->
+                <el-table-column label="流程时间" width="120" align="center">
                     <template #default="scope">
-                        {{ isRecycle ? (scope.row.deletedAt || scope.row.deleted_at || '-') : statusTimeText(scope.row) }}
+                        <el-button
+                            v-if="flowTimeList(scope.row).length"
+                            type="primary"
+                            link
+                            size="small"
+                            @click="handleFlowTime(scope.row)"
+                        >
+                            <el-icon><Clock /></el-icon> 时间线
+                        </el-button>
+                        <span v-else class="phone-text">-</span>
                     </template>
                 </el-table-column>
 
@@ -367,6 +378,27 @@
             </template>
         </el-dialog>
 
+        <!-- 流程时间线弹窗 -->
+        <el-dialog v-model="flowDialogVisible" :title="'订单流程 - ' + (flowOrderNo || '')" width="480px" destroy-on-close align-center>
+            <div v-if="flowOrderNo" class="flow-dialog-tip">订单号：{{ flowOrderNo }}</div>
+            <el-timeline v-if="flowNodes.length" class="flow-timeline">
+                <el-timeline-item
+                    v-for="(node, i) in flowNodes"
+                    :key="i"
+                    :timestamp="node.time"
+                    :type="node.type"
+                    :hollow="node.hollow"
+                    placement="top"
+                >
+                    {{ node.label }}
+                </el-timeline-item>
+            </el-timeline>
+            <div v-else class="empty-tip">该订单暂无流程时间</div>
+            <template #footer>
+                <el-button @click="flowDialogVisible = false">关闭</el-button>
+            </template>
+        </el-dialog>
+
         <!-- 发货对话框 -->
         <el-dialog v-model="shipDialogVisible" title="订单发货" width="450px" destroy-on-close>
             <el-form ref="shipFormRef" :model="shipForm" :rules="shipFormRules" label-width="80px">
@@ -395,7 +427,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { Search, Refresh, Picture, View, Top, Close, Delete, Warning, Printer, Tickets, RefreshLeft } from '@element-plus/icons-vue'
+import { Search, Refresh, Picture, View, Top, Close, Delete, Warning, Printer, Tickets, RefreshLeft, Clock } from '@element-plus/icons-vue'
 import { getOrderList, getOrderDetail, processOrder, deleteOrder, refundOrder, getPrintTicket, getRecycleList, restoreOrder, purgeOrder } from '~/api/order'
 import { printTicket, getPrintLogs } from '~/api/printer'
 import TicketContent from '~/components/TicketContent.vue'
@@ -417,8 +449,7 @@ const statusList = [
     { label: '待付款', value: 0 },
     { label: '待发货', value: 1 },
     { label: '已发货', value: 2 },
-    { label: '已完成', value: 3 },
-    { label: '已取消', value: 4 },
+    { label: '已完成/已取消', value: '3,4' },
     { label: '回收站', value: 'recycle' },
 ]
 const activeStatus = ref(null)
@@ -450,16 +481,16 @@ function statusTagType(status) {
     return map[status] ?? 'info'
 }
 
-// 当前订单状态对应的最新变更时间（状态时间）
-function statusTimeText(row) {
-    const map = {
-        0: row.createTime || row.createdAt,  // 待付款 → 下单时间
-        1: row.paidAt || row.payTime,        // 待发货(已付款) → 支付时间
-        2: row.shippedAt,                    // 已发货 → 发货时间
-        3: row.completedAt,                  // 已完成 → 完成时间
-        4: row.canceledAt,                   // 已取消 → 取消时间
-    }
-    return map[row.status] || row.createTime || row.createdAt || '-'
+// 完整流程时间线（仅展示已发生的阶段）
+function flowTimeList(row) {
+    const steps = [
+        { label: '下单', time: row.createTime || row.createdAt },
+        { label: '支付', time: row.paidAt || row.payTime },
+        { label: '发货', time: row.shippedAt },
+        { label: '完成', time: row.completedAt },
+        { label: '取消', time: row.canceledAt },
+    ]
+    return steps.filter((s) => s.time)
 }
 
 // 搜索
@@ -613,6 +644,28 @@ const previewLoading = ref(false)
 const previewError = ref('')
 const previewShop = ref({})
 const previewOrder = ref(null)
+
+// 流程时间线弹窗
+const flowDialogVisible = ref(false)
+const flowOrderNo = ref('')
+const flowNodes = ref([])
+function handleFlowTime(row) {
+    flowOrderNo.value = row.orderNo || row.id || ''
+    flowNodes.value = buildFlowNodes(row)
+    flowDialogVisible.value = true
+}
+// 构建时间线节点：下单→支付→发货→完成→取消→删除，仅已发生的阶段
+function buildFlowNodes(row) {
+    const steps = [
+        { label: '下单', time: row.createTime || row.createdAt, type: 'primary', hollow: false },
+        { label: '支付', time: row.paidAt || row.payTime, type: 'success', hollow: false },
+        { label: '发货', time: row.shippedAt, type: 'warning', hollow: false },
+        { label: '完成', time: row.completedAt, type: 'success', hollow: true },
+        { label: '取消', time: row.canceledAt, type: 'danger', hollow: true },
+        { label: '删除', time: row.deletedAt || row.deleted_at, type: 'info', hollow: true },
+    ]
+    return steps.filter((s) => s.time)
+}
 async function handlePrint(row) {
     previewDialogVisible.value = true
     previewLoading.value = true
@@ -900,6 +953,31 @@ onMounted(() => {
 .phone-text {
     font-size: 12px;
     color: #909399;
+}
+
+.address-text {
+    margin-top: 2px;
+    word-break: break-all;
+    line-height: 1.4;
+}
+
+.flow-timeline {
+    padding-left: 4px;
+    margin-top: 8px;
+}
+
+.flow-dialog-tip {
+    font-size: 12px;
+    color: #909399;
+    margin-bottom: 12px;
+    word-break: break-all;
+}
+
+.empty-tip {
+    text-align: center;
+    color: #909399;
+    padding: 30px 0;
+    font-size: 13px;
 }
 
 .ticket-status {
