@@ -11,11 +11,10 @@
                 <f-menu></f-menu>
             </aside>
             <main class="admin-main">
+                <!-- 规则：后台每次点击/进入页面都重新发请求，不使用 keep-alive 缓存，保证数据现查 -->
                 <router-view v-slot="{ Component }">
                     <transition name="fade">
-                        <keep-alive :max="10">
-                            <component :is="Component"></component>
-                        </keep-alive>
+                        <component :is="Component"></component>
                     </transition>
                 </router-view>
             </main>
