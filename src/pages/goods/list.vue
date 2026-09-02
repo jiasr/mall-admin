@@ -2,33 +2,41 @@
     <div class="goods-page">
         <div class="goods-container">
             <!-- 左侧分类树 -->
-            <div class="left-panel">
+            <div class="left-panel" v-show="!categoryCollapsed">
                 <el-card class="category-card" shadow="never">
                     <div class="category-header">
                         <span class="category-title">商品分类</span>
-                        <el-button type="primary" size="small" text @click="handleCategorySelect(null)">
-                            <el-icon><List /></el-icon> 全部
+                        <div class="category-header-actions">
+                            <el-button type="primary" size="small" text @click="handleCategorySelect(null)">
+                                <el-icon><List /></el-icon> 全部
+                            </el-button>
+                            <el-button size="small" text @click="toggleCategoryPanel">收起分类</el-button>
+                        </div>
+                    </div>
+                    <div class="tree-filter-row">
+                        <el-input
+                            v-model="treeFilter"
+                            placeholder="搜索分类"
+                            size="small"
+                            clearable
+                            class="tree-filter"
+                        >
+                            <template #prefix>
+                                <el-icon><Search /></el-icon>
+                            </template>
+                        </el-input>
+                        <el-button size="small" text @click="toggleCategoryExpand">
+                            {{ isCategoryExpanded ? '收起全部' : '展开全部' }}
                         </el-button>
                     </div>
-                    <el-input
-                        v-model="treeFilter"
-                        placeholder="搜索分类"
-                        size="small"
-                        clearable
-                        class="tree-filter"
-                    >
-                        <template #prefix>
-                            <el-icon><Search /></el-icon>
-                        </template>
-                    </el-input>
                     <el-tree
-                        ref="treeRef"
-                        :data="categoryOptions"
+                        :key="treeKey"
+                        :data="filteredCategoryOptions"
                         :props="{ label: 'name', value: 'id', children: 'children' }"
-                        :filter-node-method="filterNode"
                         node-key="id"
                         highlight-current
                         :expand-on-click-node="false"
+                        :default-expanded-keys="defaultExpandedKeys"
                         @node-click="handleNodeClick"
                     >
                         <template #default="{ node, data }">
@@ -48,6 +56,9 @@
                     <!-- 顶部操作栏 -->
                     <div class="content-header">
                         <div class="header-left">
+                            <el-button v-if="categoryCollapsed" type="primary" text @click="toggleCategoryPanel">
+                                展开分类
+                            </el-button>
                             <span class="current-category" v-if="currentCategoryName">
                                 <el-icon><Folder /></el-icon> {{ currentCategoryName }}
                             </span>
@@ -94,8 +105,14 @@
                         <el-table-column type="expand" width="48">
                             <template #default="scope">
                                 <div class="expand-panel">
-                                    <el-table :data="scope.row.skuList || []" border size="small">
-                                        <el-table-column prop="skuId" label="SKU编码" width="200" />
+                                    <el-table :data="sortedSkus(scope.row)" border size="small">
+                                        <el-table-column label="图片" width="60" align="center">
+                                            <template #default="s">
+                                                <el-image v-if="s.row.thumb" :src="s.row.thumb" fit="cover" style="width:40px;height:40px;border-radius:4px" />
+                                                <span v-else style="color:#c0c4cc">—</span>
+                                            </template>
+                                        </el-table-column>
+                                        <el-table-column prop="skuId" label="SKU编码" width="240" show-overflow-tooltip />
                                         <el-table-column label="规格" min-width="160">
                                             <template #default="s">
                                                 <template v-if="s.row.specInfo && s.row.specInfo.length">
@@ -112,7 +129,21 @@
                                                 <span v-else class="no-spec">无规格</span>
                                             </template>
                                         </el-table-column>
-                                        <el-table-column prop="barcode" label="国际编码" width="160" />
+                                        <el-table-column label="价格" width="100" align="center">
+                                            <template #default="s">
+                                                <span class="price">¥{{ ((s.row.price || 0) / 100).toFixed(2) }}</span>
+                                            </template>
+                                        </el-table-column>
+                                        <el-table-column label="国际编码" width="160" show-overflow-tooltip>
+                                            <template #default="s">
+                                                <el-button
+                                                    type="primary"
+                                                    link
+                                                    size="small"
+                                                    @click="openStockView(s.row.barcode)"
+                                                >{{ s.row.barcode || '—' }}</el-button>
+                                            </template>
+                                        </el-table-column>
                                         <el-table-column label="进销存商品" min-width="180">
                                             <template #default="s">
                                                 <span>{{ s.row.invName || '—' }}</span>
@@ -145,12 +176,18 @@
                             </template>
                         </el-table-column>
 
-                        <el-table-column prop="title" label="商品标题" min-width="200" show-overflow-tooltip />
+                        <el-table-column prop="title" label="商品标题" width="160" show-overflow-tooltip />
 
-                        <el-table-column label="SPU编码" width="240" align="center">
+                        <el-table-column label="分类" width="120" show-overflow-tooltip>
+                            <template #default="scope">
+                                <span>{{ getCategoryNames(scope.row.categoryId) }}</span>
+                            </template>
+                        </el-table-column>
+
+                        <el-table-column label="SPU编码" width="240" align="center" show-overflow-tooltip>
                             <template #default="scope">
                                 <span
-                                    style="font-family: monospace; font-size: 12px; cursor: pointer; color: #409eff; display: flex; align-items: center; justify-content: center; gap: 4px;"
+                                    style="font-family: monospace; font-size: 12px; cursor: pointer; color: #409eff; display: flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap;"
                                     @click="handleView(scope.row)"
                                 >
                                     {{ scope.row.spuId }}
@@ -159,15 +196,9 @@
                             </template>
                         </el-table-column>
 
-                        <el-table-column label="国际编码" width="140" align="center">
+                        <el-table-column label="价格" width="140" align="center">
                             <template #default="scope">
-                                <span style="font-family: monospace; font-size: 12px;">{{ getBarcode(scope.row.skuList) }}</span>
-                            </template>
-                        </el-table-column>
-
-                        <el-table-column label="价格" width="120" align="center">
-                            <template #default="scope">
-                                <span class="price">¥{{ (((scope.row.price ?? scope.row.minSalePrice) || 0) / 100).toFixed(2) }}</span>
+                                <span class="price">{{ formatPriceRange(scope.row) }}</span>
                             </template>
                         </el-table-column>
 
@@ -256,8 +287,8 @@
                 </el-descriptions>
 
                 <h4 class="sku-title">SKU 列表</h4>
-                <el-table :data="currentGoods.skuList || []" border size="small">
-                    <el-table-column prop="skuId" label="SKU编码" width="120" />
+                <el-table :data="sortedSkus(currentGoods)" border size="small">
+                    <el-table-column prop="skuId" label="SKU编码" width="200" show-overflow-tooltip />
                     <el-table-column label="规格" min-width="150">
                         <template #default="scope">
                             <template v-if="scope.row.specInfo">
@@ -303,35 +334,118 @@
                 <el-button type="primary" :loading="moveLoading" @click="handleMoveCategory">确定移动</el-button>
             </template>
         </el-dialog>
+
+        <!-- 进销存商品查看抽屉（按国际编码/条码） -->
+        <el-drawer v-model="stockDrawerVisible" title="进销存商品详情" size="720px" destroy-on-close>
+            <template v-if="stockGoods">
+                <el-descriptions :column="1" border>
+                    <el-descriptions-item label="商品名称">{{ stockGoods.name }}</el-descriptions-item>
+                    <el-descriptions-item label="条码">
+                        <template v-if="stockGoods.barcode">
+                            <div class="barcode-wrap">
+                                <canvas id="goods-stock-barcode-canvas" class="barcode-canvas"></canvas>
+                                <div class="barcode-text">{{ stockGoods.barcode }}</div>
+                            </div>
+                        </template>
+                        <span v-else>-</span>
+                    </el-descriptions-item>
+                    <el-descriptions-item label="品牌">{{ stockGoods.brand || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="规格">{{ stockGoods.spec || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="单位">{{ stockGoods.unit || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="分类">{{ stockGoods.category || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="成本价">¥{{ Number(stockGoods.costPrice || 0).toFixed(2) }}</el-descriptions-item>
+                    <el-descriptions-item label="参考售价">¥{{ Number(stockGoods.salePrice || 0).toFixed(2) }}</el-descriptions-item>
+                    <el-descriptions-item label="库存数量">{{ stockGoods.stockQuantity }}</el-descriptions-item>
+                    <el-descriptions-item label="预警阈值">{{ stockGoods.warnThreshold }}</el-descriptions-item>
+                    <el-descriptions-item label="供应商">{{ stockGoods.supplier || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="创建时间">{{ stockGoods.createTime || '-' }}</el-descriptions-item>
+                </el-descriptions>
+
+                <h4 class="block-title">库存流水</h4>
+                <el-table :data="stockLogs" border size="small" v-loading="stockLogLoading">
+                    <el-table-column label="变动数量" width="90" align="center">
+                        <template #default="scope">
+                            <span :style="{ color: scope.row.change_qty > 0 ? '#67c23a' : scope.row.change_qty < 0 ? '#f56c6c' : '#333' }">
+                                {{ scope.row.change_qty > 0 ? '+' : '' }}{{ scope.row.change_qty }}
+                            </span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="balance_after" label="结存" width="70" align="center" />
+                    <el-table-column label="业务类型" width="80" align="center">
+                        <template #default="scope">
+                            <el-tag size="small">{{ bizTypeText(scope.row.biz_type) }}</el-tag>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="biz_no" label="单号" min-width="130" align="center" />
+                    <el-table-column prop="operator_name" label="操作人" width="80" align="center" />
+                    <el-table-column prop="create_time" label="时间" width="150" align="center" />
+                </el-table>
+                <el-empty v-if="!stockLogLoading && stockLogs.length === 0" description="暂无出入库记录" :image-size="60" />
+            </template>
+        </el-drawer>
     </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onActivated, watch } from 'vue'
+import { ref, reactive, onMounted, onActivated, watch, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Refresh, Picture, View, Plus, Edit, Delete, Top, Bottom, Folder, List, DocumentCopy, Rank } from '@element-plus/icons-vue'
 import { getGoodsList, getGoodsDetail, deleteGoods, putOnSale, pullOffSale, moveGoodsCategory } from '~/api/goods'
 import { getCategoryTree } from '~/api/category'
+import { getStockGoodsByBarcode, getStockLogList } from '~/api/stock'
+import JsBarcode from 'jsbarcode'
 import { toast, showModal } from '~/composables/util'
 
 const router = useRouter()
-const treeRef = ref(null)
-
 const loading = ref(false)
 const tableData = ref([])
 const categoryOptions = ref([])
+const categoryMap = ref({})
 const treeFilter = ref('')
 const currentCategoryName = ref('')
-
-// 分类树筛选
-function filterNode(value, data) {
-    if (!value) return true
-    return data.name.includes(value)
+const categoryCollapsed = ref(false)
+function toggleCategoryPanel() {
+    categoryCollapsed.value = !categoryCollapsed.value
 }
 
-watch(treeFilter, (val) => {
-    treeRef.value?.filter(val)
+// 分类树搜索：通过计算属性过滤树数据（不依赖 tree 实例方法）
+const filteredCategoryOptions = computed(() => {
+    const kw = (treeFilter.value || '').trim()
+    if (!kw) return categoryOptions.value
+    const doFilter = (list) => {
+        const result = []
+        ;(list || []).forEach((n) => {
+            const children = n.children && n.children.length ? doFilter(n.children) : []
+            if (n.name.includes(kw) || children.length) {
+                result.push({ ...n, children })
+            }
+        })
+        return result
+    }
+    return doFilter(categoryOptions.value)
 })
+
+// 分类树：展开全部 / 收起全部
+// 通过 default-expanded-keys + 改变 :key 强制 el-tree 重新挂载来生效，
+// 规避该版本 el-tree 对 setExpandedKeys / 受控 expanded-keys 的支持问题
+const isCategoryExpanded = ref(false)
+const treeKey = ref(0)
+const defaultExpandedKeys = ref([])
+function getExpandableKeys(list = []) {
+    const keys = []
+    list.forEach((n) => {
+        if (n.children && n.children.length) {
+            keys.push(n.id)
+            keys.push(...getExpandableKeys(n.children))
+        }
+    })
+    return keys
+}
+function toggleCategoryExpand() {
+    isCategoryExpanded.value = !isCategoryExpanded.value
+    defaultExpandedKeys.value = isCategoryExpanded.value ? getExpandableKeys(categoryOptions.value) : []
+    treeKey.value++
+}
 
 const filterForm = reactive({
     keyword: '',
@@ -348,10 +462,35 @@ const pager = reactive({
 // 加载分类树
 async function loadCategoryOptions() {
     try {
-        categoryOptions.value = await getCategoryTree()
+        const tree = await getCategoryTree()
+        categoryOptions.value = tree
+        const map = {}
+        const walk = (nodes) => {
+            (nodes || []).forEach(n => {
+                map[n.id] = n.name
+                if (n.children && n.children.length) walk(n.children)
+            })
+        }
+        walk(tree)
+        categoryMap.value = map
+        isCategoryExpanded.value = false
+        defaultExpandedKeys.value = []
+        treeKey.value++
     } catch (e) {
         console.error('加载分类树失败', e)
     }
+}
+
+// 由商品所属分类 id（支持逗号分隔多个）映射为分类名称
+function getCategoryNames(ids) {
+    if (!ids) return '-'
+    return String(ids).split(',').map(id => categoryMap.value[id] || id).join(' / ')
+}
+
+// SKU 按价格（分）从高到低排序
+function sortedSkus(row) {
+    const list = (row && row.skuList) || []
+    return [...list].sort((a, b) => (a.price || 0) - (b.price || 0))
 }
 
 // 点击分类节点
@@ -366,8 +505,10 @@ function handleNodeClick(data) {
 function handleCategorySelect() {
     filterForm.categoryId = null
     currentCategoryName.value = ''
+    // 重新挂载分类树，清除高亮与展开状态
+    defaultExpandedKeys.value = []
+    treeKey.value++
     pager.pageNum = 1
-    treeRef.value?.setCurrentKey(null)
     handleSearch()
 }
 
@@ -401,8 +542,9 @@ function handleReset() {
     filterForm.status = null
     filterForm.categoryId = null
     currentCategoryName.value = ''
+    defaultExpandedKeys.value = []
+    treeKey.value++
     pager.pageNum = 1
-    treeRef.value?.setCurrentKey(null)
     handleSearch()
 }
 
@@ -510,10 +652,15 @@ async function handleMoveCategory() {
     }
 }
 
-function getBarcode(skuList) {
-    if (!skuList || !skuList.length) return '-'
-    const item = skuList.find(s => s.barcode) || skuList[0]
-    return item.barcode || '-'
+// 主表是 SPU 维度，价格取旗下所有 SKU 的价格区间（最低~最高）；具体单价在展开行每个 SKU 上展示
+function formatPriceRange(row) {
+    const list = row?.skuList || []
+    if (!list.length) return '-'
+    const prices = list.map(s => Number(s.price) || 0)
+    const min = Math.min(...prices)
+    const max = Math.max(...prices)
+    if (min === max) return '¥' + (min / 100).toFixed(2)
+    return '¥' + (min / 100).toFixed(2) + ' ~ ¥' + (max / 100).toFixed(2)
 }
 
 function copyText(text) {
@@ -530,6 +677,78 @@ function copyText(text) {
         document.body.removeChild(ta)
         toast('已复制', 'success')
     })
+}
+
+// ========== 进销存商品查看（按国际编码/条码） ==========
+const stockDrawerVisible = ref(false)
+const stockGoods = ref(null)
+const stockLogs = ref([])
+const stockLogLoading = ref(false)
+
+async function openStockView(barcode) {
+    if (!barcode) {
+        toast('该 SKU 无国际编码', 'warning')
+        return
+    }
+    stockDrawerVisible.value = true
+    stockGoods.value = null
+    stockLogs.value = []
+    stockLogLoading.value = true
+    try {
+        const goods = await getStockGoodsByBarcode(barcode)
+        stockGoods.value = goods
+        await nextTick()
+        renderStockBarcode()
+        const data = await getStockLogList({ goods_id: goods.id, pageIndex: 1, pageSize: 100 })
+        stockLogs.value = (data && data.list) || []
+    } catch (e) {
+        console.error('加载进销存商品失败', e)
+        toast('未找到该条码对应的进销存商品', 'warning')
+    } finally {
+        stockLogLoading.value = false
+    }
+}
+
+function bizTypeText(type) {
+    const map = { stock_in: '入库', stock_out: '出库', stock_check: '盘点' }
+    return map[type] || type || '-'
+}
+
+// 用 JsBarcode 渲染条码图片（对齐进销存页）
+function renderStockBarcode() {
+    const goods = stockGoods.value
+    const el = document.getElementById('goods-stock-barcode-canvas')
+    if (!goods || !el) return
+    const barcode = goods.barcode || ''
+    if (!barcode) {
+        const ctx = el.getContext('2d')
+        ctx.clearRect(0, 0, el.width, el.height)
+        return
+    }
+    try {
+        JsBarcode(el, barcode, {
+            format: 'EAN13',
+            displayValue: true,
+            width: 2,
+            height: 80,
+            margin: 5,
+            fontSize: 14,
+        })
+    } catch (e) {
+        // 非 13 位或非数字时，降级为 Code128 展示
+        try {
+            JsBarcode(el, barcode, {
+                format: 'CODE128',
+                displayValue: true,
+                width: 2,
+                height: 80,
+                margin: 5,
+                fontSize: 14,
+            })
+        } catch (err) {
+            console.error('条码渲染失败', err)
+        }
+    }
 }
 
 onMounted(async () => {
@@ -585,6 +804,12 @@ onActivated(() => {
     padding: 12px 12px 8px;
 }
 
+.category-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
 .category-title {
     font-size: 15px;
     font-weight: 600;
@@ -599,6 +824,21 @@ onActivated(() => {
     flex: 1;
     overflow-y: auto;
     padding: 4px 8px;
+}
+
+.tree-filter-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.tree-filter-row .tree-filter {
+    flex: 1;
+}
+
+.tree-filter-row .el-button {
+    flex-shrink: 0;
+    margin-left: 0;
 }
 
 .category-card :deep(.el-tree-node__content) {
@@ -778,5 +1018,24 @@ onActivated(() => {
 .move-count {
     color: #e6a23c;
     font-size: 16px;
+}
+
+.barcode-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.barcode-canvas {
+    max-width: 100%;
+    height: auto;
+    background: #fff;
+}
+
+.barcode-text {
+    margin-top: 4px;
+    font-size: 13px;
+    color: #606266;
+    letter-spacing: 1px;
 }
 </style>

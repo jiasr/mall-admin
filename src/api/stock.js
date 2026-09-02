@@ -10,6 +10,11 @@ export function getStockGoodsDetail(id) {
     return axios.get("/mall/v1/stock/goods/detail", { params: { id } })
 }
 
+// 按条码查询库存商品
+export function getStockGoodsByBarcode(barcode) {
+    return axios.get("/mall/v1/stock/goods/by-barcode", { params: { barcode } })
+}
+
 // 删除库存商品（级联删除关联资源）
 export function deleteStockGoods(id) {
     return axios.post("/mall/v1/stock/goods/delete", { id })

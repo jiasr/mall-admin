@@ -43,6 +43,7 @@ const defaultActive = ref(route.path)
 // 是否折叠
 const isCollapse = computed(() => !(store.state.asideWidth == '160px'))
 
+// 侧边栏显示名映射：过长菜单名缩短展示，完整名通过 title 悬浮提示
 const asideMenus = computed(() => {
     const menus = store.state.menus || []
     // 后端已按 sort_order 排序，前端直接使用
