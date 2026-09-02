@@ -50,6 +50,11 @@ export function deleteMenu(id) {
     return axios.post("/mall/v1/admin/menu/delete", { id })
 }
 
+// 保存菜单拖拽排序（整树全量，items: [{id, parent_id, sort_order}]）
+export function saveMenuSort(data) {
+    return axios.post("/mall/v1/admin/menu/save_sort", data)
+}
+
 // ==================== 管理员用户管理 ====================
 
 export function getAdminUserList() {

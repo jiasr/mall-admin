@@ -53,22 +53,44 @@
                     <div class="menu-tree-panel">
                         <div class="panel-header">
                             <span class="panel-title">菜单结构</span>
-                            <el-button-group size="small">
-                                <el-button type="primary" @click="openMenuDialog()">
-                                    <el-icon><Plus /></el-icon> 顶级
+                            <div class="header-right">
+                                <el-tooltip content="直接拖拽菜单行调整同级顺序（不支持跨层级）" placement="top">
+                                    <span class="drag-tip"><el-icon><Rank /></el-icon></span>
+                                </el-tooltip>
+                                <el-button type="success" size="small" :loading="menuSortSaving" @click="handleSaveSort">
+                                    <el-icon><Top /></el-icon> 保存
                                 </el-button>
-                                <el-button @click="loadMenuData">
-                                    <el-icon><Refresh /></el-icon>
-                                </el-button>
-                            </el-button-group>
+                                <el-tooltip :content="allExpanded ? '收起所有子菜单' : '展开所有子菜单'" placement="top">
+                                    <el-button size="small" @click="toggleAllMenus">
+                                        <el-icon><ArrowDown v-if="allExpanded" /><ArrowRight v-else /></el-icon>
+                                        {{ allExpanded ? '收起' : '展开' }}
+                                    </el-button>
+                                </el-tooltip>
+                                <el-button-group size="small">
+                                    <el-button type="primary" @click="openMenuDialog()">
+                                        <el-icon><Plus /></el-icon> 顶级
+                                    </el-button>
+                                    <el-button @click="loadMenuData">
+                                        <el-icon><Refresh /></el-icon>
+                                    </el-button>
+                                </el-button-group>
+                            </div>
                         </div>
                         <div class="panel-body">
+                            <div class="sort-hint" v-if="menuDirty">
+                                <el-icon><InfoFilled /></el-icon>
+                                已检测到排序变化，点击"保存"生效（仅同级调整，不支持跨层级）
+                            </div>
                             <el-tree
+                                ref="menuTreeRef2"
                                 :data="menuTreeData"
                                 node-key="id"
                                 default-expand-all
                                 highlight-current
+                                draggable
+                                :allow-drop="handleAllowDrop"
                                 :props="{ label: 'name', children: 'children' }"
+                                @node-drop="handleNodeDrop"
                                 @node-click="handleMenuTreeNodeClick"
                             >
                                 <template #default="{ node, data }">
@@ -148,7 +170,7 @@
                     <el-table-column prop="username" label="用户名" min-width="130" />
                     <el-table-column label="所属角色" min-width="140" align="center">
                         <template #default="scope">
-                            <el-tag v-if="scope.row.role_name" type="primary" size="small" effect="plain">
+                            <el-tag v-if="scope.row.role_name" size="small" effect="plain">
                                 {{ scope.row.role_name }}
                             </el-tag>
                             <el-tag v-else type="info" size="small" effect="plain">未分配</el-tag>
@@ -345,11 +367,11 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { Plus, Edit, Delete, Key, Refresh, InfoFilled } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, Key, Refresh, InfoFilled, Rank, Top, ArrowDown, ArrowRight } from '@element-plus/icons-vue'
 import {
     getRoleList, createRole, updateRole, deleteRole,
     getRoleMenus, setRoleMenus,
-    getMenuList, getMenuTree, createMenu, updateMenu, deleteMenu,
+    getMenuList, getMenuTree, createMenu, updateMenu, deleteMenu, saveMenuSort,
     getAdminUserList, createAdminUser, updateAdminUser, deleteAdminUser,
 } from '~/api/role'
 import { toast, showModal } from '~/composables/util'
@@ -507,6 +529,70 @@ function buildMenuTree(flatList) {
 
 function handleMenuTreeNodeClick(data) {
     selectedMenu.value = data
+}
+
+// ==================== 菜单拖拽排序（仅同级） ====================
+const menuDirty = ref(false)
+const menuSortSaving = ref(false)
+const menuTreeRef2 = ref(null)
+
+// 仅允许同级排序：prev/next 可落，inner(变成子级) 禁止
+// 注意：Element Plus 的 dropType 是 'prev' | 'inner' | 'next'，不是 before/after
+function handleAllowDrop(draggingNode, dropNode, type) {
+    return type === 'prev' || type === 'next'
+}
+
+// 拖拽结束/放下均标记为需要保存（el-tree 已重排 data，node-drop 一定触发）
+function handleNodeDrop() {
+    menuDirty.value = true
+}
+
+// 展开/收起切换：一个按钮控制所有父菜单的展开状态
+const allExpanded = ref(true)
+function toggleAllMenus() {
+    const tree = menuTreeRef2.value
+    if (!tree || !tree.store || !tree.store.nodesMap) return
+    const next = !allExpanded.value
+    Object.keys(tree.store.nodesMap).forEach((key) => {
+        const node = tree.store.nodesMap[key]
+        if (node && node.childNodes && node.childNodes.length) {
+            node.expanded = next
+        }
+    })
+    allExpanded.value = next
+}
+
+// 从树节点递归收集扁平列表（新顺序），parent_id 由树结构决定
+function flattenTree(nodes, parentId, list) {
+    ;(nodes || []).forEach((n, index) => {
+        list.push({
+            id: n.id,
+            parent_id: parentId,
+            sort_order: index, // 同级按当前顺序 0,1,2...
+        })
+        if (n.children && n.children.length) {
+            flattenTree(n.children, n.id, list)
+        }
+    })
+}
+
+async function handleSaveSort() {
+    const list = []
+    flattenTree(menuTreeData.value, 0, list)
+    if (!list.length) return
+    menuSortSaving.value = true
+    try {
+        await saveMenuSort({ items: list })
+        toast('排序已保存', 'success')
+        menuDirty.value = false
+        // 刷新菜单树，同步最新 sort_order 展示
+        loadMenuData()
+    } catch (e) {
+        console.error('保存排序失败', e)
+        toast('保存失败', 'error')
+    } finally {
+        menuSortSaving.value = false
+    }
 }
 
 const menuDialogVisible = ref(false)
@@ -721,7 +807,7 @@ onMounted(() => {
 }
 
 .menu-tree-panel {
-    width: 380px;
+    width: 460px;
     flex-shrink: 0;
     border: 1px solid #e4e7ed;
     border-radius: 6px;
@@ -753,6 +839,27 @@ onMounted(() => {
     font-size: 14px;
     font-weight: 600;
     color: #303133;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 6px;
+    /* 空间不足时整体收缩，避免按钮被挤压变形 */
+    min-width: 0;
+}
+
+.drag-tip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #909399;
+    cursor: help;
+    white-space: nowrap;
 }
 
 .panel-body {
@@ -769,6 +876,7 @@ onMounted(() => {
     width: 100%;
     padding-right: 8px;
     gap: 12px;
+    cursor: move; /* 提示该行可拖拽 */
 }
 
 .menu-tree-name {
@@ -791,6 +899,7 @@ onMounted(() => {
     align-items: center;
     gap: 2px;
     flex-shrink: 0;
+    cursor: pointer; /* 操作按钮区保持点击光标，避免与拖拽混淆 */
     opacity: 0;
     transition: opacity 0.2s;
 }
@@ -816,6 +925,20 @@ onMounted(() => {
     border-radius: 4px;
     font-size: 13px;
     color: #409eff;
+}
+
+/* 菜单拖拽排序提示 */
+.sort-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    background: #fdf6ec;
+    border: 1px solid #faecd8;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #e6a23c;
 }
 
 /* ========== 树形控件美化 ========== */
