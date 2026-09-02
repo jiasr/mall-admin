@@ -59,4 +59,4 @@ yarn build
 
 - 本仓库是 `aicode` 父仓库的子模块，开发协作规范以 `../doc/开发规范汇总.md`（aicode 父仓库 `doc/` 目录）为**唯一载体**。
 - 本目录的 `AGENTS.md`（及 `CLAUDE.md` / `.cursorrules` / `.github/copilot-instructions.md`）为 AI 协作入口，用任何 AI 工具打开本仓库即自动读取并引导至规范汇总。
-- 提交信息格式：`<type>: <中文描述>`；提交前在 `e:\aicode` 运行 `check-commit.ps1` 自查。
+- 提交信息格式：`<type>: <中文描述>`；提交前在**父仓库根目录**运行 `check-commit.ps1` 自查。
