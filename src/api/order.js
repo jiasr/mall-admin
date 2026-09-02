@@ -10,6 +10,11 @@ export function getOrderStatusCount() {
     return axios.get("/mall/v1/order/admin/status-count")
 }
 
+// 获取首页统计：总订单数、已支付订单数、销售额(分)
+export function getOrderStats() {
+    return axios.get("/mall/v1/order/admin/stats")
+}
+
 // 获取订单详情
 export function getOrderDetail(orderNo) {
     return axios.get("/mall/v1/order/admin/detail", { params: { orderNo } })

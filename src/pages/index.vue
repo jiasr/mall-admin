@@ -5,7 +5,7 @@
         <!-- 第一行：核心统计卡片 -->
         <el-row :gutter="20" class="stat-cards">
             <el-col :span="6">
-                <el-card shadow="hover" class="stat-card">
+                <el-card shadow="hover" class="stat-card" @click="$router.push('/order/list')">
                     <div class="stat-icon" style="background: #ecf5ff; color: #409eff;">
                         <el-icon :size="28"><Document /></el-icon>
                     </div>
@@ -16,7 +16,7 @@
                 </el-card>
             </el-col>
             <el-col :span="6">
-                <el-card shadow="hover" class="stat-card">
+                <el-card shadow="hover" class="stat-card" @click="$router.push('/order/list')">
                     <div class="stat-icon" style="background: #fdf6ec; color: #e6a23c;">
                         <el-icon :size="28"><TrendCharts /></el-icon>
                     </div>
@@ -27,7 +27,7 @@
                 </el-card>
             </el-col>
             <el-col :span="6">
-                <el-card shadow="hover" class="stat-card">
+                <el-card shadow="hover" class="stat-card" @click="$router.push('/order/list')">
                     <div class="stat-icon" style="background: #f0f9eb; color: #67c23a;">
                         <el-icon :size="28"><Money /></el-icon>
                     </div>
@@ -53,7 +53,7 @@
         <!-- 第二行：商品/分类/团购简要统计 -->
         <el-row :gutter="20" class="stat-cards" style="margin-top: 0">
             <el-col :span="6">
-                <el-card shadow="hover" class="stat-card">
+                <el-card shadow="hover" class="stat-card" @click="$router.push('/goods/list')">
                     <div class="stat-icon" style="background: #fdf3ff; color: #9b59b6;">
                         <el-icon :size="28"><Goods /></el-icon>
                     </div>
@@ -64,7 +64,7 @@
                 </el-card>
             </el-col>
             <el-col :span="6">
-                <el-card shadow="hover" class="stat-card">
+                <el-card shadow="hover" class="stat-card" @click="$router.push('/category/list')">
                     <div class="stat-icon" style="background: #ecf5ff; color: #409eff;">
                         <el-icon :size="28"><List /></el-icon>
                     </div>
@@ -75,7 +75,7 @@
                 </el-card>
             </el-col>
             <el-col :span="6">
-                <el-card shadow="hover" class="stat-card">
+                <el-card shadow="hover" class="stat-card" @click="$router.push('/groupon/list')">
                     <div class="stat-icon" style="background: #f0f9ff; color: #13ce66;">
                         <el-icon :size="28"><ShoppingCart /></el-icon>
                     </div>
@@ -86,7 +86,7 @@
                 </el-card>
             </el-col>
             <el-col :span="6">
-                <el-card shadow="hover" class="stat-card">
+                <el-card shadow="hover" class="stat-card" @click="$router.push('/coupon/list')">
                     <div class="stat-icon" style="background: #fef0f0; color: #f56c6c;">
                         <el-icon :size="28"><Ticket /></el-icon>
                     </div>
@@ -134,9 +134,9 @@ import {
     Money, Ticket, TrendCharts
 } from '@element-plus/icons-vue'
 import { getCategoryTree } from '~/api/category'
-import { getGrouponList } from '~/api/groupon'
-import { getCouponList } from '~/api/coupon'
-import axios from '~/axios'
+import { getOrderStats } from '~/api/order'
+import { getUserList } from '~/api/user'
+import { getGoodsList } from '~/api/goods'
 
 const stats = reactive({
     payOrderCount: '-',
@@ -145,8 +145,8 @@ const stats = reactive({
     newUserCount: '-',
     goodsCount: '-',
     categoryCount: 0,
-    grouponActiveCount: 0,
-    couponCount: 0,
+    grouponActiveCount: '-',
+    couponCount: '-',
 })
 
 async function loadStats() {
@@ -165,40 +165,38 @@ async function loadStats() {
         }
         stats.categoryCount = countCategory(tree || [])
 
-        // 进行中的团购
+        // 订单统计（总订单数 / 已支付订单数 / 销售额）
         try {
-            const grouponRes = await getGrouponList({ pageNum: 1, pageSize: 1, status: 1 })
-            stats.grouponActiveCount = grouponRes.totalCount || 0
-        } catch {
-            stats.grouponActiveCount = '-'
-        }
-
-        // 优惠券数量
-        try {
-            const couponRes = await getCouponList({ pageNum: 1, pageSize: 1 })
-            stats.couponCount = couponRes.totalCount || 0
-        } catch {
-            stats.couponCount = '-'
-        }
-
-        // 后台统计接口（如果后端有）
-        try {
-            const dashboardRes = await axios.get('/mall/v1/admin/dashboard/stats')
-            if (dashboardRes) {
-                stats.payOrderCount = dashboardRes.payOrderCount ?? '-'
-                stats.orderCount = dashboardRes.orderCount ?? '-'
-                stats.salesAmount = dashboardRes.salesAmount != null
-                    ? `¥${((dashboardRes.salesAmount || 0) / 100).toFixed(2)}`
+            const orderStats = await getOrderStats()
+            if (orderStats) {
+                stats.orderCount = orderStats.orderCount ?? '-'
+                stats.payOrderCount = orderStats.payOrderCount ?? '-'
+                stats.salesAmount = orderStats.salesAmount != null
+                    ? `¥${((orderStats.salesAmount || 0) / 100).toFixed(2)}`
                     : '-'
-                stats.newUserCount = dashboardRes.newUserCount ?? '-'
-                stats.goodsCount = dashboardRes.goodsCount ?? '-'
             }
         } catch {
-            // 后端还未提供该接口时，使用占位数据
-            stats.payOrderCount = '-'
             stats.orderCount = '-'
+            stats.payOrderCount = '-'
             stats.salesAmount = '-'
+        }
+
+        // 新增用户数（用户列表总数）
+        try {
+            const userRes = await getUserList({ pageNum: 1, pageSize: 1 })
+            const userBody = userRes && userRes.data ? userRes.data : userRes
+            stats.newUserCount = userBody && userBody.total != null
+                ? userBody.total
+                : (userBody && userBody.totalCount != null ? userBody.totalCount : '-')
+        } catch {
             stats.newUserCount = '-'
+        }
+
+        // 商品总数
+        try {
+            const goodsRes = await getGoodsList({ pageNum: 1, pageSize: 1 })
+            stats.goodsCount = goodsRes && goodsRes.totalCount != null ? goodsRes.totalCount : '-'
+        } catch {
             stats.goodsCount = '-'
         }
     } catch (e) {
@@ -228,7 +226,12 @@ onMounted(() => {
 }
 
 .stat-card {
-    cursor: default;
+    cursor: pointer;
+    transition: transform 0.15s;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
 }
 
 .stat-card :deep(.el-card__body) {
