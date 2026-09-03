@@ -11,6 +11,7 @@ import SpecList from "~/pages/spec/list.vue";
 import CouponList from "~/pages/coupon/list.vue";
 import FreightList from "~/pages/freight/list.vue";
 import FreightAdd from "~/pages/freight/add.vue";
+import ExpressAccount from "~/pages/express/account.vue";
 import GrouponList from "~/pages/groupon/list.vue";
 import GrouponAdd from "~/pages/groupon/add.vue";
 import GrouponOrder from "~/pages/groupon/order.vue";
@@ -260,6 +261,14 @@ const asyncRoutes = [
     component: StockGoods,
     meta: {
       title: "库存商品",
+    },
+  },
+  {
+    path: "/express/account/list",
+    name: "/express/account/list",
+    component: ExpressAccount,
+    meta: {
+      title: "快递账号",
     },
   },
 ];

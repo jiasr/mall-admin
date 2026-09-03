@@ -220,6 +220,15 @@
                             >
                                 <el-icon><Warning /></el-icon> 退款
                             </el-button>
+                            <el-button
+                                v-if="scope.row.status >= 2"
+                                type="primary"
+                                size="small"
+                                link
+                                @click="openWaybill(scope.row.orderNo)"
+                            >
+                                <el-icon><Document /></el-icon> 面单
+                            </el-button>
                             <el-button type="danger" size="small" link @click="handleDelete(scope.row)">
                                 <el-icon><Delete /></el-icon> 删除
                             </el-button>
@@ -418,24 +427,74 @@
         <!-- 发货对话框 -->
         <el-dialog v-model="shipDialogVisible" title="订单发货" width="450px" destroy-on-close>
             <el-form ref="shipFormRef" :model="shipForm" :rules="shipFormRules" label-width="80px">
-                <el-form-item label="物流公司" prop="shippingCompany">
-                    <el-select v-model="shipForm.shippingCompany" placeholder="选择物流公司" style="width: 100%">
-                        <el-option label="顺丰速运" value="顺丰速运" />
-                        <el-option label="中通快递" value="中通快递" />
-                        <el-option label="圆通速递" value="圆通速递" />
-                        <el-option label="韵达快递" value="韵达快递" />
-                        <el-option label="申通快递" value="申通快递" />
-                        <el-option label="邮政EMS" value="邮政EMS" />
-                        <el-option label="极兔速递" value="极兔速递" />
-                    </el-select>
+                <el-form-item label="发货方式">
+                    <el-radio-group v-model="shipMode">
+                        <el-radio label="manual">手动发货</el-radio>
+                        <el-radio label="wechat">微信物流</el-radio>
+                        <el-radio label="zto">中通开放平台</el-radio>
+                    </el-radio-group>
                 </el-form-item>
-                <el-form-item label="物流单号" prop="shippingNo">
-                    <el-input v-model="shipForm.shippingNo" placeholder="请输入物流单号" />
-                </el-form-item>
+                <template v-if="shipMode === 'manual'">
+                    <el-form-item label="物流公司" prop="shippingCompany">
+                        <el-select v-model="shipForm.shippingCompany" placeholder="选择物流公司" style="width: 100%">
+                            <el-option label="顺丰速运" value="顺丰速运" />
+                            <el-option label="中通快递" value="中通快递" />
+                            <el-option label="圆通速递" value="圆通速递" />
+                            <el-option label="韵达快递" value="韵达快递" />
+                            <el-option label="申通快递" value="申通快递" />
+                            <el-option label="邮政EMS" value="邮政EMS" />
+                            <el-option label="极兔速递" value="极兔速递" />
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item label="物流单号" prop="shippingNo">
+                        <el-input v-model="shipForm.shippingNo" placeholder="请输入物流单号" />
+                    </el-form-item>
+                </template>
+                <template v-else-if="shipMode === 'wechat'">
+                    <el-form-item label="快递账号" prop="accountId">
+                        <el-select v-model="shipForm.accountId" placeholder="选择已绑定的微信快递账号" style="width: 100%">
+                            <el-option
+                                v-for="a in wechatAccountOptions"
+                                :key="a.id"
+                                :label="(a.deliveryName || a.deliveryId) + (a.remark ? '（' + a.remark + '）' : '')"
+                                :value="a.id"
+                            />
+                        </el-select>
+                    </el-form-item>
+                    <el-alert type="info" :closable="false" show-icon title="通过微信物流助手生成电子面单，发货后可在订单中查看 / 补打面单" />
+                </template>
+                <template v-else>
+                    <el-form-item label="中通账号" prop="accountId">
+                        <el-select v-model="shipForm.accountId" placeholder="选择已绑定的中通账号" style="width: 100%">
+                            <el-option
+                                v-for="a in ztoAccountOptions"
+                                :key="a.id"
+                                :label="a.account_name || a.partnerCode || a.app_key"
+                                :value="a.id"
+                            />
+                        </el-select>
+                    </el-form-item>
+                    <el-alert type="info" :closable="false" show-icon title="通过中通开放平台生成电子面单，发货后可在订单中查看 / 补打面单" />
+                </template>
             </el-form>
             <template #footer>
                 <el-button @click="shipDialogVisible = false">取消</el-button>
                 <el-button type="primary" :loading="shipLoading" @click="handleShipConfirm">确认发货</el-button>
+            </template>
+        </el-dialog>
+
+        <!-- 电子面单预览 / 补打对话框 -->
+        <el-dialog v-model="waybillVisible" title="电子面单预览" width="480px" align-center destroy-on-close>
+            <div v-loading="waybillLoading" class="waybill-wrap">
+                <iframe v-if="waybillHtml" :srcdoc="waybillHtml" class="waybill-frame"></iframe>
+                <img v-else-if="waybillImage" :src="waybillImage" style="max-width:100%;border:1px solid #eee;border-radius:6px" alt="中通面单" />
+                <pre v-else-if="waybillRaw" class="waybill-raw">{{ waybillRaw }}</pre>
+                <div v-else-if="waybillError" class="preview-error">{{ waybillError }}</div>
+                <div v-else class="preview-error">暂无面单数据</div>
+            </div>
+            <template #footer>
+                <el-button @click="waybillVisible = false">关闭</el-button>
+                <el-button type="primary" :disabled="!waybillHtml" @click="printWaybill">打印面单</el-button>
             </template>
         </el-dialog>
     </div>
@@ -443,9 +502,10 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { Search, Refresh, Picture, View, Top, Close, Delete, Warning, Printer, Tickets, RefreshLeft, Clock } from '@element-plus/icons-vue'
-import { getOrderList, getOrderDetail, processOrder, deleteOrder, refundOrder, getPrintTicket, getRecycleList, restoreOrder, purgeOrder, getOrderStatusCount } from '~/api/order'
+import { Search, Refresh, Picture, View, Top, Close, Delete, Warning, Printer, Tickets, RefreshLeft, Clock, Document } from '@element-plus/icons-vue'
+import { getOrderList, getOrderDetail, processOrder, deleteOrder, refundOrder, getPrintTicket, getWaybill, getRecycleList, restoreOrder, purgeOrder, getOrderStatusCount } from '~/api/order'
 import { printTicket, getPrintLogs } from '~/api/printer'
+import { getExpressAccountList } from '~/api/express'
 import TicketContent from '~/components/TicketContent.vue'
 import { toast, showModal } from '~/composables/util'
 
@@ -754,10 +814,17 @@ const shipDialogVisible = ref(false)
 const shipLoading = ref(false)
 const shipFormRef = ref(null)
 const shipOrderNo = ref('')
+// 发货方式：manual=手动填单号；wechat=微信物流助手生成电子面单
+const shipMode = ref('manual')
+const accountOptions = ref([])
+// 按渠道过滤发货可选账号
+const wechatAccountOptions = computed(() => accountOptions.value.filter(a => a.provider !== 'zto'))
+const ztoAccountOptions = computed(() => accountOptions.value.filter(a => a.provider === 'zto'))
 
 const shipForm = reactive({
     shippingCompany: '',
     shippingNo: '',
+    accountId: '',
 })
 
 const shipFormRules = {
@@ -765,35 +832,154 @@ const shipFormRules = {
     shippingNo: [{ required: true, message: '请输入物流单号', trigger: 'blur' }],
 }
 
+// 加载已绑定的快递账号（微信物流助手）
+async function loadAccounts() {
+    try {
+        const data = await getExpressAccountList({ pageSize: 100 })
+        const result = data && data.data ? data.data : data
+        accountOptions.value = (result && result.list) ? result.list : (Array.isArray(result) ? result : [])
+    } catch (e) {
+        accountOptions.value = []
+    }
+}
+
 function handleShip(row) {
     shipOrderNo.value = row.orderNo
+    shipMode.value = 'manual'
     shipForm.shippingCompany = ''
     shipForm.shippingNo = ''
+    shipForm.accountId = ''
     shipDialogVisible.value = true
+    loadAccounts()
 }
 
 async function handleShipConfirm() {
     if (!shipFormRef.value) return
-    try {
-        await shipFormRef.value.validate()
-    } catch {
+    if (shipMode.value === 'manual') {
+        try {
+            await shipFormRef.value.validate()
+        } catch {
+            return
+        }
+    } else if (!shipForm.accountId) {
+        toast('请选择快递账号', 'error')
         return
     }
 
     shipLoading.value = true
     try {
-        await processOrder(shipOrderNo.value, {
-            shippingCompany: shipForm.shippingCompany,
-            shippingNo: shipForm.shippingNo,
-        })
-        toast('发货成功', 'success')
-        shipDialogVisible.value = false
-        handleSearch()
+        if (shipMode.value === 'manual') {
+            await processOrder(shipOrderNo.value, {
+                shippingCompany: shipForm.shippingCompany,
+                shippingNo: shipForm.shippingNo,
+            })
+            toast('发货成功', 'success')
+            shipDialogVisible.value = false
+            handleSearch()
+        } else if (shipMode.value === 'zto') {
+            if (!shipForm.accountId) {
+                toast('请选择中通账号', 'error')
+                return
+            }
+            await processOrder(shipOrderNo.value, { action: 'ship', accountId: shipForm.accountId })
+            toast('发货成功，已生成中通电子面单', 'success')
+            shipDialogVisible.value = false
+            handleSearch()
+            await openWaybill(shipOrderNo.value)
+        } else {
+            await processOrder(shipOrderNo.value, { action: 'ship_wx', accountId: shipForm.accountId })
+            toast('发货成功，已生成电子面单', 'success')
+            shipDialogVisible.value = false
+            handleSearch()
+            await openWaybill(shipOrderNo.value)
+        }
     } catch (e) {
         console.error('发货失败', e)
     } finally {
         shipLoading.value = false
     }
+}
+
+// ---------- 电子面单预览 / 补打 ----------
+const waybillVisible = ref(false)
+const waybillLoading = ref(false)
+const waybillHtml = ref('')
+const waybillError = ref('')
+const waybillRaw = ref('')
+const waybillImage = ref('')
+
+// 从微信返回的 waybill_data 中提取可渲染的 HTML（兼容 base64 编码）
+function extractWaybillHtml(data) {
+    if (!Array.isArray(data) || !data.length) return ''
+    const item = data[0] || {}
+    let html = item.print_data || item.waybill_template || ''
+    if (html && typeof html === 'string' && !html.trim().startsWith('<')) {
+        try {
+            const bin = window.atob(html)
+            const bytes = new Uint8Array(bin.length)
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+            html = new TextDecoder('utf-8').decode(bytes)
+        } catch (e) {
+            html = ''
+        }
+    }
+    return html
+}
+
+async function openWaybill(orderNo) {
+    waybillVisible.value = true
+    waybillLoading.value = true
+    waybillHtml.value = ''
+    waybillError.value = ''
+    waybillRaw.value = ''
+    try {
+        const data = await getWaybill(orderNo)
+        const result = data && data.data ? data.data : data
+        if (result && result.success === false) {
+            waybillError.value = result.message || '暂无面单数据'
+        } else {
+            const wd = (result && result.waybillData) || []
+            // 中通: 结构化对象, 优先展示面单图片
+            if (wd && typeof wd === 'object' && !Array.isArray(wd) && wd.printImage) {
+                waybillImage.value = wd.printImage.startsWith('data:image')
+                    ? wd.printImage
+                    : ('data:image/png;base64,' + wd.printImage)
+                waybillRaw.value = wd.billCode ? ('运单号: ' + wd.billCode) : ''
+            } else {
+                waybillHtml.value = extractWaybillHtml(wd)
+                if (!waybillHtml.value) {
+                    // 中通等返回结构化数据(非HTML): 提取运单号等关键信息展示
+                    const first = Array.isArray(wd) ? (wd[0] || {}) : wd
+                    const info = (first && first.waybill_id) ? first : ((first && first.result) || first || {})
+                    const billCode = info && (info.billCode || info.waybillId || info.waybillNo)
+                    if (billCode) {
+                        waybillRaw.value = '运单号: ' + billCode + '\n\n原始返回:\n' + JSON.stringify(wd, null, 2)
+                    } else {
+                        waybillRaw.value = JSON.stringify(wd, null, 2)
+                    }
+                    if (!waybillRaw.value) waybillError.value = '面单数据为空'
+                }
+            }
+        }
+    } catch (e) {
+        waybillError.value = '加载面单失败：' + (e.message || '网络异常')
+    } finally {
+        waybillLoading.value = false
+    }
+}
+
+function printWaybill() {
+    if (!waybillHtml.value) return
+    const w = window.open('', '_blank')
+    if (!w) {
+        toast('请允许浏览器弹出窗口后重试', 'error')
+        return
+    }
+    w.document.open()
+    w.document.write(waybillHtml.value)
+    w.document.close()
+    w.focus()
+    setTimeout(() => w.print(), 300)
 }
 
 // 取消订单
@@ -1109,6 +1295,21 @@ onMounted(() => {
     margin-left: 0;
     padding: 0;
     height: auto;
+}
+
+.waybill-wrap {
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.waybill-frame {
+    width: 100%;
+    height: 70vh;
+    border: 1px solid #ebeef5;
+    border-radius: 4px;
+    background: #fff;
 }
 
 .goods-info {

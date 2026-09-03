@@ -25,6 +25,11 @@ export function getPrintTicket(orderNo) {
     return axios.get(`/mall/v1/order/admin/print/${orderNo}`)
 }
 
+// 获取订单电子面单数据（微信物流生成，用于预览/补打）
+export function getWaybill(orderNo) {
+    return axios.get('/mall/v1/express/order/waybill', { params: { orderNo } })
+}
+
 // 更新订单状态（发货等）
 export function processOrder(orderNo, data) {
     return axios.post(`/mall/v1/order/admin/process/${orderNo}`, data)
