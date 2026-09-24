@@ -229,6 +229,15 @@
                             >
                                 <el-icon><Document /></el-icon> 面单
                             </el-button>
+                            <el-button
+                                v-if="scope.row.status >= 2 && scope.row.shippingNo"
+                                type="info"
+                                size="small"
+                                link
+                                @click="openTrack(scope.row)"
+                            >
+                                <el-icon><Clock /></el-icon> 轨迹
+                            </el-button>
                             <el-button type="danger" size="small" link @click="handleDelete(scope.row)">
                                 <el-icon><Delete /></el-icon> 删除
                             </el-button>
@@ -456,12 +465,13 @@
                             <el-option
                                 v-for="a in wechatAccountOptions"
                                 :key="a.id"
-                                :label="(a.deliveryName || a.deliveryId) + (a.remark ? '（' + a.remark + '）' : '')"
+                                :label="(a.is_cash ? '【散单】' : '') + (a.delivery_id || '') + (a.account_name ? ' - ' + a.account_name : '')"
                                 :value="a.id"
                             />
                         </el-select>
                     </el-form-item>
-                    <el-alert type="info" :closable="false" show-icon title="通过微信物流助手生成电子面单，发货后可在订单中查看 / 补打面单" />
+                    <el-alert v-if="selectedShipAccount && selectedShipAccount.is_cash" type="warning" :closable="false" show-icon title="散单(现付)账号：将自动预约约 2 小时后上门揽件，请保持发件电话畅通" />
+                    <el-alert v-else type="info" :closable="false" show-icon title="通过微信物流助手生成电子面单，发货后可在订单中查看 / 补打面单" />
                 </template>
                 <template v-else>
                     <el-form-item label="中通账号" prop="accountId">
@@ -494,7 +504,30 @@
             </div>
             <template #footer>
                 <el-button @click="waybillVisible = false">关闭</el-button>
-                <el-button type="primary" :disabled="!waybillHtml" @click="printWaybill">打印面单</el-button>
+                <el-button type="primary" :disabled="!waybillHtml && !waybillImage" @click="printWaybill">打印面单</el-button>
+            </template>
+        </el-dialog>
+
+        <!-- 物流轨迹 -->
+        <el-dialog v-model="trackVisible" title="物流轨迹" width="560px" align-center destroy-on-close>
+            <div v-loading="trackLoading" style="max-height: 420px; overflow-y: auto">
+                <el-timeline v-if="trackList.length">
+                    <el-timeline-item
+                        v-for="(t, i) in trackList"
+                        :key="i"
+                        :timestamp="t.time || ''"
+                        :type="i === 0 ? 'primary' : 'info'"
+                        placement="top"
+                    >
+                        <div>{{ t.status || '-' }}</div>
+                        <div v-if="t.location" style="color: #999; font-size: 12px">{{ t.location }}</div>
+                    </el-timeline-item>
+                </el-timeline>
+                <div v-else-if="trackError" class="preview-error">{{ trackError }}</div>
+                <div v-else class="preview-error">暂无轨迹信息</div>
+            </div>
+            <template #footer>
+                <el-button @click="trackVisible = false">关闭</el-button>
             </template>
         </el-dialog>
     </div>
@@ -505,7 +538,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { Search, Refresh, Picture, View, Top, Close, Delete, Warning, Printer, Tickets, RefreshLeft, Clock, Document } from '@element-plus/icons-vue'
 import { getOrderList, getOrderDetail, processOrder, deleteOrder, refundOrder, getPrintTicket, getWaybill, getRecycleList, restoreOrder, purgeOrder, getOrderStatusCount } from '~/api/order'
 import { printTicket, getPrintLogs } from '~/api/printer'
-import { getExpressAccountList } from '~/api/express'
+import { getExpressAccountList, getExpressTrack } from '~/api/express'
 import TicketContent from '~/components/TicketContent.vue'
 import { toast, showModal } from '~/composables/util'
 
@@ -820,6 +853,8 @@ const accountOptions = ref([])
 // 按渠道过滤发货可选账号
 const wechatAccountOptions = computed(() => accountOptions.value.filter(a => a.provider !== 'zto'))
 const ztoAccountOptions = computed(() => accountOptions.value.filter(a => a.provider === 'zto'))
+// 当前选中的发货账号（用于散单提示）
+const selectedShipAccount = computed(() => accountOptions.value.find(a => a.id === shipForm.accountId) || null)
 
 const shipForm = reactive({
     shippingCompany: '',
@@ -969,17 +1004,74 @@ async function openWaybill(orderNo) {
 }
 
 function printWaybill() {
-    if (!waybillHtml.value) return
+    // 微信返回面单模板 HTML(少数快递公司)或中通返回面单图片, 两者都要能打印
+    const html = waybillHtml.value
+    const img = waybillImage.value
+    if (!html && !img) return
     const w = window.open('', '_blank')
     if (!w) {
         toast('请允许浏览器弹出窗口后重试', 'error')
         return
     }
+    // 图片面单: 按 100mm×150mm 电子面单纸排版打印
+    const content = html || (
+        '<style>@page{size:100mm 150mm;margin:0}body{margin:0}img{width:100mm;display:block}</style>' +
+        '<img src="' + img + '" onload="setTimeout(function(){window.focus();window.print()},200)" />'
+    )
     w.document.open()
-    w.document.write(waybillHtml.value)
+    w.document.write(content)
     w.document.close()
     w.focus()
-    setTimeout(() => w.print(), 300)
+    if (html) setTimeout(() => w.print(), 300)
+}
+
+// ---------- 物流轨迹 ----------
+const trackVisible = ref(false)
+const trackLoading = ref(false)
+const trackList = ref([])
+const trackError = ref('')
+
+// 中文公司名 -> 微信 delivery_id 编码（手动发货填的是中文名, 接口只认编码）
+const DELIVERY_ID_MAP = {
+    '顺丰速运': 'SF',
+    '邮政EMS': 'EMS', '中国邮政': 'EMS', '中国邮政速递物流': 'EMS',
+    '中通快递': 'zto',  // 中通走中通开放平台, 后端按 provider 路由
+    '圆通速递': 'YTO', '圆通快递': 'YTO',
+    '申通快递': 'STO', '韵达速递': 'YUNDA', '韵达快递': 'YUNDA',
+    '极兔速递': 'JTSD', '极兔快递': 'JTSD',
+    '京东快递': 'JDL', '德邦快递': 'DB', '百世快递': 'BEST',
+    '天天快递': 'HHTT', '安能物流': 'ANE', '优速快递': 'UCE', '品骏快递': 'PJ',
+}
+
+function toDeliveryId(company) {
+    if (!company) return ''
+    return DELIVERY_ID_MAP[company] || company  // 系统下单写入的本就是编码(如 SF), 原样使用
+}
+
+async function openTrack(row) {
+    trackVisible.value = true
+    trackLoading.value = true
+    trackList.value = []
+    trackError.value = ''
+    const deliveryId = toDeliveryId(row.shippingCompany || row.deliveryCompany || '')
+    if (!deliveryId || !row.shippingNo) {
+        trackError.value = '该订单没有物流单号，无法查询轨迹'
+        trackLoading.value = false
+        return
+    }
+    try {
+        const data = await getExpressTrack({ deliveryId, waybillId: row.shippingNo })
+        const result = data && data.data ? data.data : data
+        const list = Array.isArray(result) ? result : ((result && result.list) || [])
+        trackList.value = list
+        if (!list.length) {
+            trackError.value = (result && result.message) || '暂无轨迹信息（快递员揽收后才会产生轨迹）'
+        }
+    } catch (e) {
+        trackError.value = '查询轨迹失败：' + ((e.response && e.response.data && e.response.data.exceptionMsg) || e.message || '网络异常')
+    } finally {
+        trackLoading.value = false
+    }
 }
 
 // 取消订单

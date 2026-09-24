@@ -22,6 +22,16 @@ export function syncExpressAccount() {
     return axios.post("/mall/v1/express/account/sync")
 }
 
+// 微信物流助手支持的快递公司列表（getAllDelivery）
+export function getExpressDeliveryList() {
+    return axios.get("/mall/v1/express/delivery/list")
+}
+
+// 查询物流轨迹（微信物流助手 path/get；中通传 deliveryId=zto）
+export function getExpressTrack(params) {
+    return axios.get("/mall/v1/express/track", { params })
+}
+
 // 删除账号
 export function deleteExpressAccount(id) {
     return axios.post(`/mall/v1/express/account/delete/${id}`)

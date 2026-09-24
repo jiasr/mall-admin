@@ -42,7 +42,12 @@
                     </template>
                 </el-table-column>
                 <el-table-column prop="delivery_id" label="快递公司ID" width="120" />
-                <el-table-column prop="biz_id" label="客户编码" min-width="150" />
+                <el-table-column prop="biz_id" label="客户编码" min-width="150">
+                    <template #default="{ row }">
+                        <span>{{ row.biz_id || '-' }}</span>
+                        <el-tag v-if="row.is_cash" type="warning" size="small" class="ml-2">散单</el-tag>
+                    </template>
+                </el-table-column>
                 <el-table-column prop="partner_code" label="电子面单账号" min-width="150">
                     <template #default="{ row }">
                         <span v-if="row.provider === 'zto'">{{ row.partner_code || '-' }}</span>
@@ -105,26 +110,50 @@
                             default-first-option
                             placeholder="选择或输入快递公司ID（如 YTO）"
                             style="width: 100%"
+                            :loading="deliveryLoading"
+                            @change="onCompanyChange"
                         >
                             <el-option
                                 v-for="c in deliveryCompanies"
                                 :key="c.id"
                                 :label="`${c.id} - ${c.name}`"
                                 :value="c.id"
-                            />
+                            >
+                                <span>{{ c.id }} - {{ c.name }}</span>
+                                <el-tag v-if="c.canUseCash" type="success" size="small" class="ml-2">
+                                    可散单
+                                </el-tag>
+                            </el-option>
                         </el-select>
-                        <span class="form-tip">微信物流助手中的快递公司编码，如 YTO（圆通）、STO（申通）、ZTO（中通）。可手动输入。</span>
+                        <span class="form-tip">
+                            列表来自微信物流助手「支持的快递公司列表」，可手动输入未列出的编码。
+                        </span>
+                        <span v-if="selectedCompany && selectedCompany.canUseCash" class="form-tip" style="color: #67c23a">
+                            该公司支持散单（无需签约）
+                            <template v-if="selectedCompany.cashBizId">
+                                ，客户编码可直接填现付 biz_id：{{ selectedCompany.cashBizId }}
+                            </template>
+                        </span>
                     </el-form-item>
-                    <el-form-item label="账号类型" prop="accountType">
-                        <el-select v-model="form.accountType" style="width: 100%">
-                            <el-option :value="1" label="月结账号（顺丰/EMS 等，biz_id 为月结卡号）" />
-                            <el-option :value="2" label="网点账号（圆通/中通/韵达/极兔等，biz_id 为网点编码）" />
-                            <el-option :value="3" label="手机号（按寄件人手机号下单）" />
-                        </el-select>
-                        <span class="form-tip">不同快递公司支持的账号类型不同，选错会导致微信返回 40097。以快递公司要求为准。</span>
+                    <el-form-item v-if="form.isCash || (selectedCompany && selectedCompany.canUseCash)" label="账号类型">
+                        <el-radio-group v-model="form.isCash" @change="onAccountTypeChange">
+                            <el-radio :label="false">月结账号（需在微信侧绑定）</el-radio>
+                            <el-radio :label="true">散单 / 现付（免绑定，直接下单）</el-radio>
+                        </el-radio-group>
+                        <span class="form-tip">
+                            散单无需签约月结账号，微信侧也不支持绑定（绑定会报 9300531），选择后客户编码自动填入现付编码。
+                        </span>
                     </el-form-item>
-                    <el-form-item label="客户编码" prop="bizId">
+                    <!-- 散单：现付编码由微信下发，无需手填 -->
+                    <el-form-item v-if="form.isCash" label="客户编码">
+                        <el-alert type="success" :closable="false" show-icon style="width: 100%"
+                            :title="'散单无需填写，将自动使用微信下发的现付编码：' + (form.bizId || '保存时自动获取')" />
+                    </el-form-item>
+                    <el-form-item v-else label="客户编码" prop="bizId">
                         <el-input v-model="form.bizId" placeholder="快递公司分配的客户编码 biz_id" />
+                        <span class="form-tip">
+                            快递公司给的客户编码 / 网点编码 / 月结卡号。
+                        </span>
                     </el-form-item>
                 </template>
 
@@ -175,7 +204,7 @@
                 <el-form-item label="账号别名" prop="accountName">
                     <el-input v-model="form.accountName" autocomplete="off" placeholder="便于识别的名称，如：中通-主账号" />
                 </el-form-item>
-                <el-form-item v-if="form.provider === 'wechat'" label="密码" prop="password">
+                <el-form-item v-if="form.provider === 'wechat' && !form.isCash" label="密码" prop="password">
                     <el-input
                         v-model="form.password"
                         type="password"
@@ -215,23 +244,29 @@ import {
     updateExpressAccount,
     syncExpressAccount,
     deleteExpressAccount,
+    getExpressDeliveryList,
 } from '~/api/express'
 
-// 微信物流常见快递公司（仅供下拉参考，允许手动输入其他）
-const deliveryCompanies = [
-    { id: 'YTO', name: '圆通速递' },
-    { id: 'STO', name: '申通快递' },
-    { id: 'ZTO', name: '中通快递' },
-    { id: 'YD', name: '韵达速递' },
-    { id: 'SF', name: '顺丰速运' },
-    { id: 'EMS', name: '中国邮政EMS' },
-    { id: 'HTKY', name: '百世快递' },
-    { id: 'JD', name: '京东物流' },
-    { id: 'DBL', name: '德邦快递' },
-    { id: 'JTSD', name: '极兔速递' },
-    { id: 'ZJS', name: '宅急送' },
-    { id: 'POSTB', name: '邮政标准' },
+// 微信物流助手支持的快递公司（接口拉取失败时的兜底列表，编码与微信 delivery/getall 一致）
+const FALLBACK_DELIVERY = [
+    { id: 'ANE', name: '安能物流', canUseCash: false, cashBizId: '' },
+    { id: 'BEST', name: '百世快递', canUseCash: false, cashBizId: '' },
+    { id: 'DB', name: '德邦快递', canUseCash: true, cashBizId: 'DB_CASH' },
+    { id: 'EMS', name: '中国邮政速递物流', canUseCash: false, cashBizId: '' },
+    { id: 'HHTT', name: '天天快递', canUseCash: false, cashBizId: '' },
+    { id: 'JDL', name: '京东快递', canUseCash: false, cashBizId: '' },
+    { id: 'JTSD', name: '极兔快递', canUseCash: false, cashBizId: '' },
+    { id: 'PJ', name: '品骏快递', canUseCash: false, cashBizId: '' },
+    { id: 'SF', name: '顺丰速运', canUseCash: true, cashBizId: 'SF_CASH' },
+    { id: 'STO', name: '申通快递', canUseCash: false, cashBizId: '' },
+    { id: 'UCE', name: '优速快递', canUseCash: false, cashBizId: '' },
+    { id: 'YTO', name: '圆通速递', canUseCash: false, cashBizId: '' },
+    { id: 'YUNDA', name: '韵达速递', canUseCash: false, cashBizId: '' },
+    { id: 'ZTO', name: '中通快递', canUseCash: false, cashBizId: '' },
 ]
+
+const deliveryCompanies = ref(FALLBACK_DELIVERY)
+const deliveryLoading = ref(false)
 
 const loading = ref(false)
 const list = ref([])
@@ -253,6 +288,7 @@ const form = reactive({
     accountName: '',
     password: '',
     accountType: 1,
+    isCash: false,
     // 中通渠道字段
     provider: 'wechat',
     appKey: '',
@@ -266,6 +302,32 @@ const form = reactive({
 
 // 中通渠道不需要原微信字段必填，整体改为手动校验
 const rules = {}
+
+// 当前选中的快递公司，用于散单（现付 biz_id）提示
+const selectedCompany = computed(
+    () => deliveryCompanies.value.find((c) => c.id === form.deliveryId) || null
+)
+
+// 拉取微信物流助手支持的快递公司列表；失败时保留内置列表，不阻塞页面
+async function fetchDeliveryList() {
+    deliveryLoading.value = true
+    try {
+        const res = await getExpressDeliveryList()
+        const arr = Array.isArray(res) ? res : (res && res.data) || []
+        if (arr.length) {
+            deliveryCompanies.value = arr.map((c) => ({
+                id: c.delivery_id,
+                name: c.delivery_name,
+                canUseCash: c.can_use_cash === 1,
+                cashBizId: c.cash_biz_id || '',
+            }))
+        }
+    } catch (e) {
+        console.error(e)
+    } finally {
+        deliveryLoading.value = false
+    }
+}
 
 async function fetchData() {
     loading.value = true
@@ -285,6 +347,24 @@ async function fetchData() {
     }
 }
 
+// 切换快递公司: 不支持散单的公司强制回到月结
+function onCompanyChange() {
+    const c = selectedCompany.value
+    if (!c || !c.canUseCash) {
+        form.isCash = false
+    }
+}
+
+// 切到散单时自动填入微信下发的现付编码, 免去手填
+function onAccountTypeChange(val) {
+    if (val) {
+        form.password = ''
+        if (selectedCompany.value && selectedCompany.value.cashBizId) {
+            form.bizId = selectedCompany.value.cashBizId
+        }
+    }
+}
+
 function openBindDialog(row) {
     if (row) {
         isEdit.value = true
@@ -295,6 +375,7 @@ function openBindDialog(row) {
             accountName: row.account_name || '',
             password: '',
             accountType: row.account_type || 1,
+            isCash: row.is_cash == 1,
             provider: row.provider || 'wechat',
             appKey: row.app_key || '',
             appSecret: '',
@@ -308,7 +389,7 @@ function openBindDialog(row) {
         isEdit.value = false
         editId.value = null
         Object.assign(form, {
-            deliveryId: '', bizId: '', accountName: '', password: '', accountType: 1,
+            deliveryId: '', bizId: '', accountName: '', password: '', accountType: 1, isCash: false,
             provider: 'wechat', appKey: '', appSecret: '', partnerCode: '', customerId: '', partnerKey: '', partnerType: '1', env: 'sandbox',
         })
     }
@@ -339,6 +420,7 @@ async function handleSubmit() {
             bizId: form.bizId,
             password: form.password,
             accountType: form.accountType,
+            isCash: form.isCash ? 1 : 0,
             appKey: form.appKey,
             appSecret: form.appSecret,
             partnerCode: form.partnerCode,
@@ -394,7 +476,10 @@ async function handleSync() {
     }
 }
 
-onMounted(fetchData)
+onMounted(() => {
+    fetchData()
+    fetchDeliveryList()
+})
 </script>
 
 <style scoped>
