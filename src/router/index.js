@@ -12,6 +12,7 @@ import CouponList from "~/pages/coupon/list.vue";
 import FreightList from "~/pages/freight/list.vue";
 import FreightAdd from "~/pages/freight/add.vue";
 import ExpressAccount from "~/pages/express/account.vue";
+import ExpressWaybill from "~/pages/express/waybill.vue";
 import GrouponList from "~/pages/groupon/list.vue";
 import GrouponAdd from "~/pages/groupon/add.vue";
 import GrouponOrder from "~/pages/groupon/order.vue";
@@ -269,6 +270,14 @@ const asyncRoutes = [
     component: ExpressAccount,
     meta: {
       title: "快递账号",
+    },
+  },
+  {
+    path: "/express/waybill/list",
+    name: "/express/waybill/list",
+    component: ExpressWaybill,
+    meta: {
+      title: "运单管理",
     },
   },
 ];

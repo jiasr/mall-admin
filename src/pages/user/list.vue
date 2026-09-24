@@ -44,6 +44,15 @@
 
                 <el-table-column prop="phone" label="手机号" width="130" align="center" />
 
+                <el-table-column label="openid" min-width="200">
+                    <template #default="scope">
+                        <span v-if="scope.row.openid" class="openid-text" title="点击复制" @click="copyText(scope.row.openid)">
+                            {{ shortOpenid(scope.row.openid) }}
+                        </span>
+                        <span v-else class="text-muted">-</span>
+                    </template>
+                </el-table-column>
+
                 <el-table-column label="状态" width="80" align="center">
                     <template #default="scope">
                         <el-tag v-if="scope.row.status === 1 || scope.row.status === undefined" type="success" size="small">正常</el-tag>
@@ -121,6 +130,12 @@
                     <el-descriptions-item label="用户ID">{{ currentUser.id }}</el-descriptions-item>
                     <el-descriptions-item label="手机号">{{ currentUser.phone || '-' }}</el-descriptions-item>
                     <el-descriptions-item label="注册时间">{{ currentUser.createTime || currentUser.createdAt || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="openid" :span="2">
+                        <span v-if="currentUser.openid" class="openid-text" title="点击复制" @click="copyText(currentUser.openid)">
+                            {{ currentUser.openid }}
+                        </span>
+                        <span v-else class="text-muted">-</span>
+                    </el-descriptions-item>
                 </el-descriptions>
 
                 <!-- 收货地址 -->
@@ -155,6 +170,22 @@ import { ref, reactive, onMounted } from 'vue'
 import { Search, Refresh, User, View, CircleClose, CircleCheck, Delete, Location } from '@element-plus/icons-vue'
 import { getUserList, getUserDetail, toggleUserStatus, deleteUser, getUserAddresses } from '~/api/user'
 import { toast, showModal, imgUrl } from '~/composables/util'
+
+// openid 过长，列表里截断显示
+function shortOpenid(openid) {
+    if (!openid || openid.length <= 16) return openid
+    return openid.slice(0, 10) + '...' + openid.slice(-6)
+}
+
+// 点击复制（用于把 openid 拷到快递账号的沙盒配置）
+async function copyText(text) {
+    try {
+        await navigator.clipboard.writeText(text)
+        toast('已复制', 'success')
+    } catch (e) {
+        toast('复制失败，请手动选中复制', 'error')
+    }
+}
 
 const loading = ref(false)
 const tableData = ref([])
@@ -381,5 +412,18 @@ onMounted(() => {
     font-weight: 600;
     color: #303133;
     margin-bottom: 12px;
+}
+.openid-text {
+    cursor: pointer;
+    color: #409eff;
+    word-break: break-all;
+}
+
+.openid-text:hover {
+    text-decoration: underline;
+}
+
+.text-muted {
+    color: #c0c4cc;
 }
 </style>

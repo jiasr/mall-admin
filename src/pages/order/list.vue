@@ -230,6 +230,15 @@
                                 <el-icon><Document /></el-icon> 面单
                             </el-button>
                             <el-button
+                                v-if="scope.row.status === 2 && rowWaybillNo(scope.row)"
+                                type="danger"
+                                size="small"
+                                link
+                                @click="handleCancelWaybill(scope.row)"
+                            >
+                                <el-icon><RefreshLeft /></el-icon> 取消运单
+                            </el-button>
+                            <el-button
                                 v-if="scope.row.status >= 2 && scope.row.shippingNo"
                                 type="info"
                                 size="small"
@@ -465,13 +474,14 @@
                             <el-option
                                 v-for="a in wechatAccountOptions"
                                 :key="a.id"
-                                :label="(a.is_cash ? '【散单】' : '') + (a.delivery_id || '') + (a.account_name ? ' - ' + a.account_name : '')"
+                                :label="(a.is_cash ? '【散单】' : '') + ((a.delivery_id || '').toUpperCase() === 'TEST' ? '【沙盒测试】' : '') + (a.delivery_id || '') + (a.account_name ? ' - ' + a.account_name : '')"
                                 :value="a.id"
                             />
                         </el-select>
                     </el-form-item>
                     <el-alert v-if="selectedShipAccount && selectedShipAccount.is_cash" type="warning" :closable="false" show-icon title="散单(现付)账号：将自动预约约 2 小时后上门揽件，请保持发件电话畅通" />
                     <el-alert v-else type="info" :closable="false" show-icon title="通过微信物流助手生成电子面单，发货后可在订单中查看 / 补打面单" />
+                    <el-alert v-if="selectedShipAccount && (selectedShipAccount.delivery_id || '').toUpperCase() === 'TEST'" type="warning" :closable="false" show-icon style="margin-top: 8px" title="沙盒测试账号：将使用微信 TEST 测试运力下单，不产生真实物流，每天限 10 单" />
                 </template>
                 <template v-else>
                     <el-form-item label="中通账号" prop="accountId">
@@ -538,7 +548,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { Search, Refresh, Picture, View, Top, Close, Delete, Warning, Printer, Tickets, RefreshLeft, Clock, Document } from '@element-plus/icons-vue'
 import { getOrderList, getOrderDetail, processOrder, deleteOrder, refundOrder, getPrintTicket, getWaybill, getRecycleList, restoreOrder, purgeOrder, getOrderStatusCount } from '~/api/order'
 import { printTicket, getPrintLogs } from '~/api/printer'
-import { getExpressAccountList, getExpressTrack } from '~/api/express'
+import { getExpressAccountList, getExpressTrack, cancelExpressWaybill } from '~/api/express'
 import TicketContent from '~/components/TicketContent.vue'
 import { toast, showModal } from '~/composables/util'
 
@@ -1071,6 +1081,47 @@ async function openTrack(row) {
         trackError.value = '查询轨迹失败：' + ((e.response && e.response.data && e.response.data.exceptionMsg) || e.message || '网络异常')
     } finally {
         trackLoading.value = false
+    }
+}
+
+// 运单号（列表返回 logisticsVO.logisticsNo，详情返回 shippingNo）
+function rowWaybillNo(row) {
+    return row.shippingNo || (row.logisticsVO && row.logisticsVO.logisticsNo) || ''
+}
+
+// 取消运单：向物流渠道撤销并把订单恢复为待发货
+async function handleCancelWaybill(row, force = false) {
+    const no = rowWaybillNo(row)
+    const confirmed = await showModal(
+        '将向物流侧撤销运单 ' + no + '，并把订单恢复为「待发货」。确定继续吗？',
+        'warning',
+        '取消运单确认'
+    ).then(() => true).catch(() => false)
+    if (!confirmed) return
+    try {
+        const res = await cancelExpressWaybill(row.orderNo, force ? 1 : 0)
+        const result = res && res.data ? res.data : res
+        if (result && result.success === false) {
+            toast(result.message || '取消运单失败', 'error')
+            return
+        }
+        toast(result?.message || '运单已撤销，订单恢复为待发货', 'success')
+        handleSearch()
+    } catch (e) {
+        console.error('取消运单失败', e)
+        const payload = e?.response?.data || {}
+        const code = payload.errCode || ''
+        const msg = payload.exceptionMsg || payload.errMessage || '取消运单失败'
+        if (!force && (code === 'WX_CANCEL_FAILED' || code === 'ZTO_CANCEL_FAILED')) {
+            const ok = await showModal(
+                '物流侧撤销失败：' + msg + '\n是否仅做本地撤销？（订单恢复待发货，但快递侧运单可能仍在）',
+                'warning',
+                '渠道撤销失败'
+            ).then(() => true).catch(() => false)
+            if (ok) await handleCancelWaybill(row, true)
+            return
+        }
+        toast(msg, 'error')
     }
 }
 

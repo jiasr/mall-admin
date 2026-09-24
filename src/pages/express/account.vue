@@ -41,7 +41,12 @@
                         </el-tag>
                     </template>
                 </el-table-column>
-                <el-table-column prop="delivery_id" label="快递公司ID" width="120" />
+                <el-table-column prop="delivery_id" label="快递公司ID" width="150">
+                    <template #default="{ row }">
+                        <span>{{ row.delivery_id || '-' }}</span>
+                        <el-tag v-if="(row.delivery_id || '').toUpperCase() === 'TEST'" type="danger" size="small" class="ml-2">沙盒</el-tag>
+                    </template>
+                </el-table-column>
                 <el-table-column prop="biz_id" label="客户编码" min-width="150">
                     <template #default="{ row }">
                         <span>{{ row.biz_id || '-' }}</span>
@@ -64,8 +69,11 @@
                     </template>
                 </el-table-column>
                 <el-table-column prop="create_time" label="创建时间" width="170" />
-                <el-table-column label="操作" width="160" fixed="right">
+                <el-table-column label="操作" width="230" fixed="right">
                     <template #default="{ row }">
+                        <el-button type="success" link size="small" @click="openOrders(row)">
+                            订单
+                        </el-button>
                         <el-button type="primary" link size="small" @click="openBindDialog(row)">
                             编辑
                         </el-button>
@@ -111,8 +119,12 @@
                             placeholder="选择或输入快递公司ID（如 YTO）"
                             style="width: 100%"
                             :loading="deliveryLoading"
-                            @change="onCompanyChange"
+                            @change="onDeliveryIdChange"
                         >
+                            <el-option label="TEST - 微信物流沙盒（测试专用）" value="TEST">
+                                <span>TEST - 微信物流沙盒</span>
+                                <el-tag type="danger" size="small" class="ml-2">沙盒</el-tag>
+                            </el-option>
                             <el-option
                                 v-for="c in deliveryCompanies"
                                 :key="c.id"
@@ -128,12 +140,25 @@
                         <span class="form-tip">
                             列表来自微信物流助手「支持的快递公司列表」，可手动输入未列出的编码。
                         </span>
+                        <el-alert
+                            v-if="(form.deliveryId || '').toUpperCase() === 'TEST'"
+                            type="warning"
+                            :closable="false"
+                            show-icon
+                            style="margin-top: 8px"
+                            title="沙盒测试账号"
+                            description="将使用微信 TEST 测试运力下单：不产生真实物流、无需签约真实快递账号；每天限下 10 单；下单 openid 必须是小程序管理员 / 运营者 / 开发者，请在下方「沙盒 openid」中填写。"
+                        />
                         <span v-if="selectedCompany && selectedCompany.canUseCash" class="form-tip" style="color: #67c23a">
                             该公司支持散单（无需签约）
                             <template v-if="selectedCompany.cashBizId">
                                 ，客户编码可直接填现付 biz_id：{{ selectedCompany.cashBizId }}
                             </template>
                         </span>
+                    </el-form-item>
+                    <el-form-item v-if="(form.deliveryId || '').toUpperCase() === 'TEST'" label="沙盒 openid" prop="sandboxOpenid">
+                        <el-input v-model="form.sandboxOpenid" placeholder="小程序管理员 / 运营者 / 开发者的 openid" />
+                        <span class="form-tip">沙盒下单必须用该身份，不能填买家 openid</span>
                     </el-form-item>
                     <el-form-item v-if="form.isCash || (selectedCompany && selectedCompany.canUseCash)" label="账号类型">
                         <el-radio-group v-model="form.isCash" @change="onAccountTypeChange">
@@ -204,7 +229,7 @@
                 <el-form-item label="账号别名" prop="accountName">
                     <el-input v-model="form.accountName" autocomplete="off" placeholder="便于识别的名称，如：中通-主账号" />
                 </el-form-item>
-                <el-form-item v-if="form.provider === 'wechat' && !form.isCash" label="密码" prop="password">
+                <el-form-item v-if="form.provider === 'wechat' && !form.isCash && (form.deliveryId || '').toUpperCase() !== 'TEST'" label="密码" prop="password">
                     <el-input
                         v-model="form.password"
                         type="password"
@@ -231,6 +256,44 @@
                 <p class="text-muted mt-2">更多说明详见《中通开放平台接入文档》。</p>
             </div>
         </el-dialog>
+
+        <!-- 该账号的运单（微信物流助手订单管理 / batchgetorder） -->
+        <el-dialog v-model="ordersVisible" title="账号运单" width="920px" destroy-on-close>
+            <div v-loading="ordersLoading">
+                <el-alert
+                    v-if="isSandboxAccount"
+                    type="warning"
+                    :closable="false"
+                    show-icon
+                    title="沙盒账号：可模拟揽件 / 派送 / 签收，用于验证状态流转与服务通知"
+                />
+                <el-table :data="ordersData" size="small" border class="mt-2" max-height="420">
+                    <el-table-column prop="orderNo" label="订单号" min-width="180" show-overflow-tooltip />
+                    <el-table-column prop="waybillNo" label="运单号" min-width="150" show-overflow-tooltip />
+                    <el-table-column label="运单状态" width="110">
+                        <template #default="{ row }">
+                            <el-tag size="small" :type="row.waybillState === 1 ? 'danger' : 'success'">
+                                {{ row.waybillStateDesc || '-' }}
+                            </el-tag>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="shippedAt" label="发货时间" width="170" />
+                    <el-table-column v-if="isSandboxAccount" label="模拟更新" width="210" align="center">
+                        <template #default="{ row }">
+                            <el-select v-model="row._action" size="small" style="width: 130px">
+                                <el-option v-for="a in actionOptions" :key="a.value" :label="a.label" :value="a.value" />
+                            </el-select>
+                            <el-button type="primary" link size="small" @click="handleTestUpdate(row)">执行</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+                <div v-if="!ordersData.length && !ordersLoading" class="empty-tip">该账号暂无运单</div>
+            </div>
+            <template #footer>
+                <el-button @click="ordersVisible = false">关闭</el-button>
+                <el-button type="primary" @click="fetchOrders">刷新状态</el-button>
+            </template>
+        </el-dialog>
     </div>
 </template>
 
@@ -245,6 +308,8 @@ import {
     syncExpressAccount,
     deleteExpressAccount,
     getExpressDeliveryList,
+    getWaybillList,
+    testUpdateWaybill,
 } from '~/api/express'
 
 // 微信物流助手支持的快递公司（接口拉取失败时的兜底列表，编码与微信 delivery/getall 一致）
@@ -298,10 +363,72 @@ const form = reactive({
     partnerKey: '',
     partnerType: '1',
     env: 'sandbox',
+    sandboxOpenid: '',
 })
 
 // 中通渠道不需要原微信字段必填，整体改为手动校验
 const rules = {}
+
+// ===== 账号运单（微信物流助手订单管理 / batchgetorder） =====
+const ordersVisible = ref(false)
+const ordersLoading = ref(false)
+const ordersData = ref([])
+const currentAccount = ref(null)
+const isSandboxAccount = computed(
+    () => ((currentAccount.value && currentAccount.value.delivery_id) || '').toUpperCase() === 'TEST'
+)
+const actionOptions = [
+    { label: '揽件成功', value: 100001 },
+    { label: '分配业务员', value: 100003 },
+    { label: '更新运输轨迹', value: 200001 },
+    { label: '开始派送', value: 300002 },
+    { label: '签收成功', value: 300003 },
+    { label: '订单取消', value: 400001 },
+]
+
+async function openOrders(row) {
+    currentAccount.value = row
+    ordersVisible.value = true
+    await fetchOrders()
+}
+
+async function fetchOrders() {
+    const row = currentAccount.value
+    if (!row) return
+    ordersLoading.value = true
+    try {
+        const res = await getWaybillList({
+            company: row.delivery_id || '',
+            pageNum: 1,
+            pageSize: 50,
+            withWxStatus: 1,
+        })
+        const outer = res && res.data ? res.data : res
+        const inner = outer && outer.data ? outer.data : outer
+        ordersData.value = ((inner && inner.list) || []).map(i => ({ ...i, _action: 100001 }))
+    } catch (e) {
+        console.error(e)
+        toast('加载运单失败', 'error')
+    } finally {
+        ordersLoading.value = false
+    }
+}
+
+async function handleTestUpdate(row) {
+    try {
+        const res = await testUpdateWaybill(row.orderNo, row._action || 100001)
+        const result = res && res.data ? res.data : res
+        if (result && result.success === false) {
+            toast(result.message || '模拟更新失败', 'error')
+            return
+        }
+        toast(result?.message || '已模拟更新', 'success')
+        await fetchOrders()
+    } catch (e) {
+        console.error(e)
+        toast(e?.response?.data?.exceptionMsg || e?.response?.data?.message || '模拟更新失败', 'error')
+    }
+}
 
 // 当前选中的快递公司，用于散单（现付 biz_id）提示
 const selectedCompany = computed(
@@ -347,6 +474,16 @@ async function fetchData() {
     }
 }
 
+// 选择快递公司: 选到沙盒 TEST 时自动补测试商户号, 免去手填
+function onDeliveryIdChange(val) {
+    if ((val || '').toUpperCase() === 'TEST') {
+        form.bizId = 'test_biz_id'
+        form.password = ''
+        form.isCash = false
+    }
+    onCompanyChange()
+}
+
 // 切换快递公司: 不支持散单的公司强制回到月结
 function onCompanyChange() {
     const c = selectedCompany.value
@@ -384,13 +521,14 @@ function openBindDialog(row) {
             partnerKey: '',
             partnerType: row.partner_type || '1',
             env: row.env || 'sandbox',
+            sandboxOpenid: row.sandbox_openid || '',
         })
     } else {
         isEdit.value = false
         editId.value = null
         Object.assign(form, {
             deliveryId: '', bizId: '', accountName: '', password: '', accountType: 1, isCash: false,
-            provider: 'wechat', appKey: '', appSecret: '', partnerCode: '', customerId: '', partnerKey: '', partnerType: '1', env: 'sandbox',
+            provider: 'wechat', appKey: '', appSecret: '', partnerCode: '', customerId: '', partnerKey: '', partnerType: '1', env: 'sandbox', sandboxOpenid: '',
         })
     }
     dialogVisible.value = true
@@ -428,6 +566,7 @@ async function handleSubmit() {
             partnerKey: form.partnerKey,
             partnerType: form.partnerType,
             env: form.env,
+            sandboxOpenid: form.sandboxOpenid,
         }
         if (isEdit.value) {
             payload.id = editId.value

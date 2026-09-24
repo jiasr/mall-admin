@@ -19,6 +19,7 @@
                     <el-input v-model="form.sender_address" type="textarea" :rows="2" placeholder="中通寄件发件人地址，格式：省 市 区 详细地址，如：山东省 济南市 历城区 xxx路xx号" />
                     <span class="form-tip">用于电子面单发件人省/市/区解析，留空则回退使用商城名称</span>
                 </el-form-item>
+
                 <el-form-item label="商城Logo">
                     <div class="logo-upload-wrap">
                         <!-- 预览 -->
