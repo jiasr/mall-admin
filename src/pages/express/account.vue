@@ -104,7 +104,6 @@
                 <el-form-item label="渠道" prop="provider">
                     <el-radio-group v-model="form.provider">
                         <el-radio label="wechat">微信物流助手</el-radio>
-                        <el-radio label="zto">中通开放平台</el-radio>
                     </el-radio-group>
                 </el-form-item>
 
@@ -114,9 +113,7 @@
                         <el-select
                             v-model="form.deliveryId"
                             filterable
-                            allow-create
-                            default-first-option
-                            placeholder="选择或输入快递公司ID（如 YTO）"
+                            placeholder="选择快递公司（如 SF、TEST 沙盒）"
                             style="width: 100%"
                             :loading="deliveryLoading"
                             @change="onDeliveryIdChange"
@@ -138,7 +135,7 @@
                             </el-option>
                         </el-select>
                         <span class="form-tip">
-                            列表来自微信物流助手「支持的快递公司列表」，可手动输入未列出的编码。
+                            列表来自微信物流助手「支持的快递公司列表」，请直接选择。
                         </span>
                         <el-alert
                             v-if="(form.deliveryId || '').toUpperCase() === 'TEST'"
@@ -465,7 +462,8 @@ async function fetchData() {
             status: (statusFilter.value == null || statusFilter.value === '') ? '' : statusFilter.value,
         })
         const data = res || {}
-        list.value = data.list || []
+        // 仅展示微信物流助手账号（中通渠道已下线，历史数据保留但不显示）
+        list.value = (data.list || []).filter((a) => a.provider !== 'zto')
         total.value = data.total || 0
     } catch (e) {
         console.error(e)

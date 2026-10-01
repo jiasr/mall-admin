@@ -449,7 +449,6 @@
                     <el-radio-group v-model="shipMode">
                         <el-radio label="manual">手动发货</el-radio>
                         <el-radio label="wechat">微信物流</el-radio>
-                        <el-radio label="zto">中通开放平台</el-radio>
                     </el-radio-group>
                 </el-form-item>
                 <template v-if="shipMode === 'manual'">
@@ -468,7 +467,7 @@
                         <el-input v-model="shipForm.shippingNo" placeholder="请输入物流单号" />
                     </el-form-item>
                 </template>
-                <template v-else-if="shipMode === 'wechat'">
+                <template v-else>
                     <el-form-item label="快递账号" prop="accountId">
                         <el-select v-model="shipForm.accountId" placeholder="选择已绑定的微信快递账号" style="width: 100%">
                             <el-option
@@ -482,19 +481,6 @@
                     <el-alert v-if="selectedShipAccount && selectedShipAccount.is_cash" type="warning" :closable="false" show-icon title="散单(现付)账号：将自动预约约 2 小时后上门揽件，请保持发件电话畅通" />
                     <el-alert v-else type="info" :closable="false" show-icon title="通过微信物流助手生成电子面单，发货后可在订单中查看 / 补打面单" />
                     <el-alert v-if="selectedShipAccount && (selectedShipAccount.delivery_id || '').toUpperCase() === 'TEST'" type="warning" :closable="false" show-icon style="margin-top: 8px" title="沙盒测试账号：将使用微信 TEST 测试运力下单，不产生真实物流，每天限 10 单" />
-                </template>
-                <template v-else>
-                    <el-form-item label="中通账号" prop="accountId">
-                        <el-select v-model="shipForm.accountId" placeholder="选择已绑定的中通账号" style="width: 100%">
-                            <el-option
-                                v-for="a in ztoAccountOptions"
-                                :key="a.id"
-                                :label="a.account_name || a.partnerCode || a.app_key"
-                                :value="a.id"
-                            />
-                        </el-select>
-                    </el-form-item>
-                    <el-alert type="info" :closable="false" show-icon title="通过中通开放平台生成电子面单，发货后可在订单中查看 / 补打面单" />
                 </template>
             </el-form>
             <template #footer>
