@@ -504,13 +504,29 @@
         </el-dialog>
 
         <!-- 电子面单预览 / 补打对话框 -->
-        <el-dialog v-model="waybillVisible" title="电子面单预览" width="480px" align-center destroy-on-close>
+        <el-dialog v-model="waybillVisible" title="电子面单预览" width="620px" align-center destroy-on-close>
             <div v-loading="waybillLoading" class="waybill-wrap">
-                <iframe v-if="waybillHtml" :srcdoc="waybillHtml" class="waybill-frame"></iframe>
-                <img v-else-if="waybillImage" :src="waybillImage" style="max-width:100%;border:1px solid #eee;border-radius:6px" alt="中通面单" />
-                <pre v-else-if="waybillRaw" class="waybill-raw">{{ waybillRaw }}</pre>
-                <div v-else-if="waybillError" class="preview-error">{{ waybillError }}</div>
-                <div v-else class="preview-error">暂无面单数据</div>
+                <template v-if="waybillHtml">
+                    <div class="waybill-toolbar">
+                        <el-button size="small" @click="waybillScaleDown">缩小</el-button>
+                        <span class="scale-text">{{ Math.round(waybillScale * 100) }}%</span>
+                        <el-button size="small" @click="waybillScaleUp">放大</el-button>
+                        <el-button size="small" @click="fitWaybillWidth">适应宽度</el-button>
+                    </div>
+                    <div ref="waybillViewport" class="waybill-viewport">
+                        <div class="waybill-paper-box" :style="{ height: waybillPaperHeight ? waybillPaperHeight + 'px' : 'auto' }">
+                            <div ref="waybillPaper" class="waybill-paper" :style="{ transform: 'scale(' + waybillScale + ')' }">
+                                <div v-html="waybillHtml"></div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                <template v-else>
+                    <img v-if="waybillImage" :src="waybillImage" style="max-width:100%;border:1px solid #eee;border-radius:6px" alt="电子面单" />
+                    <pre v-else-if="waybillRaw" class="waybill-raw">{{ waybillRaw }}</pre>
+                    <div v-else-if="waybillError" class="preview-error">{{ waybillError }}</div>
+                    <div v-else class="preview-error">暂无面单数据</div>
+                </template>
             </div>
             <template #footer>
                 <el-button @click="waybillVisible = false">关闭</el-button>
@@ -544,11 +560,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { Search, Refresh, Picture, View, Top, Close, Delete, Warning, Printer, Tickets, RefreshLeft, Clock, Document } from '@element-plus/icons-vue'
 import { getOrderList, getOrderDetail, processOrder, deleteOrder, refundOrder, getPrintTicket, getWaybill, getRecycleList, restoreOrder, purgeOrder, getOrderStatusCount } from '~/api/order'
 import { printTicket, getPrintLogs } from '~/api/printer'
-import { getExpressAccountList, getExpressTrack, cancelExpressWaybill } from '~/api/express'
+import { getExpressAccountList, getExpressTrack, cancelExpressWaybill, getWaybillPrint } from '~/api/express'
 import TicketContent from '~/components/TicketContent.vue'
 import { toast, showModal } from '~/composables/util'
 
@@ -977,6 +993,30 @@ async function openWaybill(orderNo) {
     waybillHtml.value = ''
     waybillError.value = ''
     waybillRaw.value = ''
+    waybillImage.value = ''
+    // 1) 优先实时向渠道取面单（微信 print_html / 中通面单图片），与「运单管理」保持一致
+    try {
+        const res = await getWaybillPrint(orderNo)
+        const result = res && res.data ? res.data : res
+        if (result && result.success === false) {
+            waybillError.value = result.message || '暂无面单数据'
+        } else {
+            waybillHtml.value = result?.html || ''
+            waybillImage.value = normalizeWaybillImage(result?.printImage || '')
+            if (result?.waybillExtras && result.waybillExtras.length) {
+                waybillRaw.value = JSON.stringify(result.waybillExtras, null, 2)
+            }
+            if (!waybillHtml.value && !waybillImage.value) {
+                waybillError.value = '渠道未返回面单内容'
+            }
+            waybillLoading.value = false
+            await fitWaybillWidth()
+            return
+        }
+    } catch (e) {
+        console.error('实时获取面单失败，回退本地数据', e)
+    }
+    // 2) 回退：用下单时本地保存的面单数据
     try {
         const data = await getWaybill(orderNo)
         const result = data && data.data ? data.data : data
@@ -986,9 +1026,7 @@ async function openWaybill(orderNo) {
             const wd = (result && result.waybillData) || []
             // 中通: 结构化对象, 优先展示面单图片
             if (wd && typeof wd === 'object' && !Array.isArray(wd) && wd.printImage) {
-                waybillImage.value = wd.printImage.startsWith('data:image')
-                    ? wd.printImage
-                    : ('data:image/png;base64,' + wd.printImage)
+                waybillImage.value = normalizeWaybillImage(wd.printImage)
                 waybillRaw.value = wd.billCode ? ('运单号: ' + wd.billCode) : ''
             } else {
                 waybillHtml.value = extractWaybillHtml(wd)
@@ -1011,6 +1049,60 @@ async function openWaybill(orderNo) {
     } finally {
         waybillLoading.value = false
     }
+    await fitWaybillWidth()
+}
+
+// 面单图片统一补全 data URI 前缀（中通返回的是 base64）
+function normalizeWaybillImage(img) {
+    if (!img) return ''
+    return (img.startsWith('data:image') || img.startsWith('http')) ? img : ('data:image/png;base64,' + img)
+}
+
+// ===== 面单缩放（与运单管理页一致：微信面单 HTML 尺寸固定需缩放） =====
+const waybillViewport = ref(null)
+const waybillPaper = ref(null)
+const waybillScale = ref(1)
+const waybillPaperHeight = ref(0)
+
+async function applyWaybillHeight() {
+    await nextTick()
+    const paper = waybillPaper.value
+    if (!paper) return
+    waybillPaperHeight.value = Math.ceil((paper.offsetHeight || 0) * (waybillScale.value || 1))
+}
+
+async function fitWaybillWidth() {
+    await nextTick()
+    const vp = waybillViewport.value
+    const paper = waybillPaper.value
+    if (!vp || !paper) return
+    waybillScale.value = 1
+    await nextTick()
+    const naturalW = paper.scrollWidth || paper.offsetWidth || 380
+    const avail = (vp.clientWidth || naturalW) - 12
+    const s = Math.min(1, +(avail / naturalW).toFixed(3))
+    waybillScale.value = s > 0 ? s : 1
+    await applyWaybillHeight()
+}
+
+function waybillScaleUp() {
+    waybillScale.value = Math.min(2, +((waybillScale.value || 1) + 0.1).toFixed(2))
+    applyWaybillHeight()
+}
+
+function waybillScaleDown() {
+    waybillScale.value = Math.max(0.3, +((waybillScale.value || 1) - 0.1).toFixed(2))
+    applyWaybillHeight()
+}
+
+// 给面单 HTML 注入热敏纸页面设置（100mm×150mm）；已自带 @page 的不覆盖
+function buildPrintHtml(html) {
+    if (!html) return ''
+    if (/@page/i.test(html)) return html
+    const style = '<style>@page{size:100mm 150mm;margin:0}html,body{margin:0;padding:0}</style>'
+    if (/<\/head>/i.test(html)) return html.replace(/<\/head>/i, style + '</head>')
+    if (/<body/i.test(html)) return html.replace(/<body/i, '<head>' + style + '</head><body')
+    return '<html><head>' + style + '</head><body>' + html + '</body></html>'
 }
 
 function printWaybill() {
@@ -1023,8 +1115,8 @@ function printWaybill() {
         toast('请允许浏览器弹出窗口后重试', 'error')
         return
     }
-    // 图片面单: 按 100mm×150mm 电子面单纸排版打印
-    const content = html || (
+    // HTML 面单: 注入热敏纸设置; 图片面单: 按 100mm×150mm 电子面单纸排版打印
+    const content = (html ? buildPrintHtml(html) : '') || (
         '<style>@page{size:100mm 150mm;margin:0}body{margin:0}img{width:100mm;display:block}</style>' +
         '<img src="' + img + '" onload="setTimeout(function(){window.focus();window.print()},200)" />'
     )
@@ -1442,9 +1534,39 @@ onMounted(() => {
 
 .waybill-wrap {
     min-height: 200px;
+    overflow-y: auto;
+}
+
+.waybill-toolbar {
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.scale-text {
+    font-size: 12px;
+    color: #606266;
+    min-width: 46px;
+    text-align: center;
+}
+
+.waybill-viewport {
+    overflow: auto;
+    max-height: 400px;
+    background: #fafafa;
+    border: 1px solid #ebeef5;
+    padding: 6px;
+}
+
+.waybill-paper-box {
+    overflow: hidden;
+}
+
+.waybill-paper {
+    transform-origin: top left;
+    width: 380px;
+    background: #fff;
 }
 
 .waybill-frame {

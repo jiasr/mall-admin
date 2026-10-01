@@ -296,6 +296,16 @@ function scaleDown() {
     applyPaperHeight()
 }
 
+// 给面单 HTML 注入热敏纸页面设置（100mm×150mm）；已自带 @page 的不覆盖
+function buildPrintHtml(html) {
+    if (!html) return ''
+    if (/@page/i.test(html)) return html
+    const style = '<style>@page{size:100mm 150mm;margin:0}html,body{margin:0;padding:0}</style>'
+    if (/<\/head>/i.test(html)) return html.replace(/<\/head>/i, style + '</head>')
+    if (/<body/i.test(html)) return html.replace(/<body/i, '<head>' + style + '</head><body')
+    return '<html><head>' + style + '</head><body>' + html + '</body></html>'
+}
+
 function printWaybill() {
     const w = window.open('', '_blank')
     if (!w) {
@@ -304,11 +314,12 @@ function printWaybill() {
     }
     if (waybillImage.value) {
         w.document.write(
-            '<html><head><title>电子面单</title></head><body style="margin:0;text-align:center">' +
-            '<img src="' + waybillImage.value + '" style="width:100mm" /></body></html>'
+            '<html><head><title>电子面单</title>' +
+            '<style>@page{size:100mm 150mm;margin:0}body{margin:0;text-align:center}</style>' +
+            '</head><body><img src="' + waybillImage.value + '" style="width:100mm;display:block" /></body></html>'
         )
     } else {
-        w.document.write(waybillHtml.value || '')
+        w.document.write(buildPrintHtml(waybillHtml.value || ''))
     }
     w.document.close()
     w.focus()
