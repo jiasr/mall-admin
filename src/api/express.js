@@ -52,6 +52,11 @@ export function cancelExpressWaybill(orderNo, force = 0) {
     return axios.post("/mall/v1/express/waybill/cancel", { orderNo, force })
 }
 
+// 腾讯跑腿订单详情（orderDetail：状态/费用/骑手/取送件照片）
+export function getErrandDetail(orderNo) {
+    return axios.get("/mall/v1/express/errand/detail", { params: { orderNo } })
+}
+
 // 删除账号
 export function deleteExpressAccount(id) {
     return axios.post(`/mall/v1/express/account/delete/${id}`)

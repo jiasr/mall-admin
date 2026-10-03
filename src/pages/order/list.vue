@@ -449,6 +449,7 @@
                     <el-radio-group v-model="shipMode">
                         <el-radio label="manual">手动发货</el-radio>
                         <el-radio label="wechat">微信物流</el-radio>
+                        <el-radio label="tencent">腾讯跑腿</el-radio>
                     </el-radio-group>
                 </el-form-item>
                 <template v-if="shipMode === 'manual'">
@@ -467,7 +468,7 @@
                         <el-input v-model="shipForm.shippingNo" placeholder="请输入物流单号" />
                     </el-form-item>
                 </template>
-                <template v-else>
+                <template v-else-if="shipMode === 'wechat'">
                     <el-form-item label="快递账号" prop="accountId">
                         <el-select v-model="shipForm.accountId" placeholder="选择已绑定的微信快递账号" style="width: 100%">
                             <el-option
@@ -481,6 +482,19 @@
                     <el-alert v-if="selectedShipAccount && selectedShipAccount.is_cash" type="warning" :closable="false" show-icon title="散单(现付)账号：将自动预约约 2 小时后上门揽件，请保持发件电话畅通" />
                     <el-alert v-else type="info" :closable="false" show-icon title="通过微信物流助手生成电子面单，发货后可在订单中查看 / 补打面单" />
                     <el-alert v-if="selectedShipAccount && (selectedShipAccount.delivery_id || '').toUpperCase() === 'TEST'" type="warning" :closable="false" show-icon style="margin-top: 8px" title="沙盒测试账号：将使用微信 TEST 测试运力下单，不产生真实物流，每天限 10 单" />
+                </template>
+                <template v-else>
+                    <el-form-item label="跑腿账号" prop="accountId">
+                        <el-select v-model="shipForm.accountId" placeholder="选择已绑定的腾讯跑腿账号" style="width: 100%">
+                            <el-option
+                                v-for="a in tencentAccountOptions"
+                                :key="a.id"
+                                :label="(a.account_name ? a.account_name : '腾讯跑腿') + (a.env === 'prod' ? '（生产）' : '（沙箱）')"
+                                :value="a.id"
+                            />
+                        </el-select>
+                    </el-form-item>
+                    <el-alert type="info" :closable="false" show-icon title="腾讯跑腿为同城即时配送：系统将自动地理编码补全经纬度、先询价再创单，发货后可在「运单管理」查看状态/轨迹/取消" />
                 </template>
             </el-form>
             <template #footer>
@@ -865,6 +879,7 @@ const accountOptions = ref([])
 // 按渠道过滤发货可选账号
 const wechatAccountOptions = computed(() => accountOptions.value.filter(a => a.provider !== 'zto'))
 const ztoAccountOptions = computed(() => accountOptions.value.filter(a => a.provider === 'zto'))
+const tencentAccountOptions = computed(() => accountOptions.value.filter(a => a.provider === 'tencent'))
 // 当前选中的发货账号（用于散单提示）
 const selectedShipAccount = computed(() => accountOptions.value.find(a => a.id === shipForm.accountId) || null)
 
@@ -933,6 +948,15 @@ async function handleShipConfirm() {
             shipDialogVisible.value = false
             handleSearch()
             await openWaybill(shipOrderNo.value)
+        } else if (shipMode.value === 'tencent') {
+            if (!shipForm.accountId) {
+                toast('请选择腾讯跑腿账号', 'error')
+                return
+            }
+            await processOrder(shipOrderNo.value, { action: 'ship', accountId: shipForm.accountId })
+            toast('发货成功，已向腾讯跑腿下单', 'success')
+            shipDialogVisible.value = false
+            handleSearch()
         } else {
             await processOrder(shipOrderNo.value, { action: 'ship_wx', accountId: shipForm.accountId })
             toast('发货成功，已生成电子面单', 'success')
@@ -1123,6 +1147,7 @@ const trackError = ref('')
 const DELIVERY_ID_MAP = {
     '顺丰速运': 'SF',
     '邮政EMS': 'EMS', '中国邮政': 'EMS', '中国邮政速递物流': 'EMS',
+    '腾讯跑腿': 'tencent',  // 腾讯跑腿同城配送, 后端按 provider 路由
     '中通快递': 'zto',  // 中通走中通开放平台, 后端按 provider 路由
     '圆通速递': 'YTO', '圆通快递': 'YTO',
     '申通快递': 'STO', '韵达速递': 'YUNDA', '韵达快递': 'YUNDA',
@@ -1190,7 +1215,7 @@ async function handleCancelWaybill(row, force = false) {
         const payload = e?.response?.data || {}
         const code = payload.errCode || ''
         const msg = payload.exceptionMsg || payload.errMessage || '取消运单失败'
-        if (!force && (code === 'WX_CANCEL_FAILED' || code === 'ZTO_CANCEL_FAILED')) {
+        if (!force && (code === 'WX_CANCEL_FAILED' || code === 'ZTO_CANCEL_FAILED' || code === 'ERRAND_CANCEL_FAILED')) {
             const ok = await showModal(
                 '物流侧撤销失败：' + msg + '\n是否仅做本地撤销？（订单恢复待发货，但快递侧运单可能仍在）',
                 'warning',

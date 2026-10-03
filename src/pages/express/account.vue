@@ -7,9 +7,10 @@
 
             <el-alert type="info" :closable="false" show-icon class="mb-5">
                 <template #title>
-                    此处管理发货渠道账号，支持两种渠道：
-                    <b>微信物流助手</b>（圆通/申通/中通等，绑定后生成电子面单）与
-                    <b>中通开放平台</b>（直连中通生成电子面单，需填写开放平台 appKey / appSecret / 电子面单账号）。
+                    此处管理发货渠道账号，支持三种渠道：
+                    <b>微信物流助手</b>（圆通/申通/中通等，绑定后生成电子面单）、
+                    <b>中通开放平台</b>（直连中通生成电子面单）与
+                    <b>腾讯跑腿</b>（同城即时配送，由腾讯调度达达/顺丰/UU 等运力，需填写 apiKey / 签名密钥）。
                     <el-link type="primary" @click="showHelp = true" class="ml-2">查看帮助</el-link>
                 </template>
             </el-alert>
@@ -36,8 +37,8 @@
             <el-table :data="list" v-loading="loading" style="width: 100%">
                 <el-table-column label="渠道" width="130">
                     <template #default="{ row }">
-                        <el-tag :type="row.provider === 'zto' ? 'warning' : 'success'">
-                            {{ row.provider === 'zto' ? '中通开放平台' : '微信物流助手' }}
+                        <el-tag :type="row.provider === 'tencent' ? 'danger' : (row.provider === 'zto' ? 'warning' : 'success')">
+                            {{ row.provider === 'tencent' ? '腾讯跑腿' : (row.provider === 'zto' ? '中通开放平台' : '微信物流助手') }}
                         </el-tag>
                     </template>
                 </el-table-column>
@@ -104,6 +105,7 @@
                 <el-form-item label="渠道" prop="provider">
                     <el-radio-group v-model="form.provider">
                         <el-radio label="wechat">微信物流助手</el-radio>
+                        <el-radio label="tencent">腾讯跑腿</el-radio>
                     </el-radio-group>
                 </el-form-item>
 
@@ -180,7 +182,7 @@
                 </template>
 
                 <!-- 中通渠道字段 -->
-                <template v-else>
+                <template v-else-if="form.provider === 'zto'">
                     <el-form-item label="appKey" prop="appKey">
                         <el-input v-model="form.appKey" placeholder="中通开放平台 appKey" />
                     </el-form-item>
@@ -223,6 +225,56 @@
                     </el-form-item>
                 </template>
 
+                <!-- 腾讯跑腿渠道字段 -->
+                <template v-else>
+                    <el-form-item label="apiKey" prop="appKey">
+                        <el-input v-model="form.appKey" placeholder="腾讯跑腿 api_key" />
+                        <span class="form-tip">腾讯出行服务开放平台分配的 api_key（渠道授权标识）。</span>
+                    </el-form-item>
+                    <el-form-item label="签名密钥" prop="appSecret">
+                        <el-input
+                            v-model="form.appSecret"
+                            type="password"
+                            show-password
+                            autocomplete="new-password"
+                            :placeholder="isEdit ? '留空则不修改' : '腾讯跑腿 api_secret（签名密钥）'"
+                        />
+                        <span class="form-tip">用于请求签名（MD5），等同于 2B 接入文档中的 api_secret，请妥善保管。</span>
+                    </el-form-item>
+                    <el-form-item label="环境" prop="env">
+                        <el-radio-group v-model="form.env">
+                            <el-radio label="sandbox">沙箱</el-radio>
+                            <el-radio label="prod">生产</el-radio>
+                        </el-radio-group>
+                        <span class="form-tip">沙箱仅支持北京 mock 运力，用于联调；生产需腾讯侧开通城市权限。</span>
+                    </el-form-item>
+                    <el-form-item label="物品类别" prop="goodsType">
+                        <el-select v-model="form.goodsType" placeholder="选择物品类别" style="width: 100%">
+                            <el-option
+                                v-for="(label, val) in goodsTypeOptions"
+                                :key="val"
+                                :label="val + ' - ' + label"
+                                :value="Number(val)"
+                            />
+                        </el-select>
+                        <span class="form-tip">跑腿物品类别（附录 3.3），默认 12 其他。</span>
+                    </el-form-item>
+                    <el-form-item label="跑腿类型" prop="expressType">
+                        <el-radio-group v-model="form.expressType">
+                            <el-radio :label="1">特惠拼送</el-radio>
+                            <el-radio :label="2">极速直送</el-radio>
+                        </el-radio-group>
+                        <span class="form-tip">1 特惠拼送（拼单更便宜）/ 2 极速直送（专人直送更快）。</span>
+                    </el-form-item>
+                    <el-form-item label="回调地址" prop="callbackUrl">
+                        <el-input v-model="form.callbackUrl" placeholder="订单状态变更回调（可选，留空用腾讯侧固定配置）" />
+                        <span class="form-tip">腾讯主动推送订单状态（/status）的地址；不填则沿用腾讯侧账号配置。</span>
+                    </el-form-item>
+                    <el-alert type="warning" :closable="false" show-icon style="margin-bottom: 8px"
+                        title="还需在「系统设置」配置腾讯位置服务 key（tencent_lbs_key）"
+                        description="跑腿下单必须传收寄件经纬度与城市编码，系统会自动调用腾讯位置服务地理编码补全；未配置将无法下单（报 ERRAND_NO_LBS_KEY）。" />
+                </template>
+
                 <el-form-item label="账号别名" prop="accountName">
                     <el-input v-model="form.accountName" autocomplete="off" placeholder="便于识别的名称，如：中通-主账号" />
                 </el-form-item>
@@ -245,12 +297,15 @@
         <!-- 帮助弹窗 -->
         <el-dialog v-model="showHelp" title="快递账号管理帮助" width="640px">
             <div class="help-content">
-                <h4>两种发货渠道</h4>
+                <h4>三种发货渠道</h4>
                 <p><b>微信物流助手</b>：需先在微信侧绑定快递公司账号，本系统从微信同步后可一键生成电子面单。</p>
                 <p><b>中通开放平台</b>：直连中通开放平台下单。在开放平台「应用信息」获取 appKey/appSecret（沙箱/生产各一对），在「商家授权网点授权」获取电子面单账号 partnerCode，填入本页即可。下单走中通官方网关，返回运单号。</p>
+                <p><b>腾讯跑腿</b>：同城即时配送，由腾讯调度达达/顺丰/UU 等运力。填入 apiKey（渠道授权标识）与 apiSecret（请求签名密钥），环境选沙箱/生产即可，无需微信侧绑定。下单时系统自动地理编码补全经纬度与城市编码，并先询价再创单。</p>
                 <h4>如何获取中通凭证？</h4>
                 <p>登录开放平台 → 应用 → 应用详情：appKey/appSecret 在「应用信息」；电子面单账号（partnerCode）在「商家授权网点授权」列表。沙箱联调用沙箱 appKey/appSecret + 环境选"沙箱"。</p>
-                <p class="text-muted mt-2">更多说明详见《中通开放平台接入文档》。</p>
+                <h4>如何获取腾讯跑腿凭证？</h4>
+                <p>在腾讯出行服务·开放平台创建应用，获取 api_key 与 api_secret（签名密钥）；城市运力需腾讯侧开通。另需在「系统设置」配置腾讯位置服务 key（tencent_lbs_key），否则下单因缺少经纬度而失败。</p>
+                <p class="text-muted mt-2">更多说明详见《腾讯出行服务·跑腿（2B）接入文档》。</p>
             </div>
         </el-dialog>
 
@@ -330,6 +385,13 @@ const FALLBACK_DELIVERY = [
 const deliveryCompanies = ref(FALLBACK_DELIVERY)
 const deliveryLoading = ref(false)
 
+// 腾讯跑腿物品类别（附录 3.3）
+const ERRAND_GOODS_TYPE = {
+    1: '文件证照', 2: '服饰', 3: '食品饮料', 4: '蛋糕', 5: '鲜花', 6: '数码',
+    7: '水果生鲜', 8: '药品', 9: '汽配', 10: '个护美妆', 11: '家居家纺', 12: '其他',
+}
+const goodsTypeOptions = computed(() => ERRAND_GOODS_TYPE)
+
 const loading = ref(false)
 const list = ref([])
 const total = ref(0)
@@ -361,6 +423,10 @@ const form = reactive({
     partnerType: '1',
     env: 'sandbox',
     sandboxOpenid: '',
+    // 腾讯跑腿渠道字段
+    goodsType: 12,
+    expressType: 1,
+    callbackUrl: '',
 })
 
 // 中通渠道不需要原微信字段必填，整体改为手动校验
@@ -395,7 +461,7 @@ async function fetchOrders() {
     ordersLoading.value = true
     try {
         const res = await getWaybillList({
-            company: row.delivery_id || '',
+            company: row.provider === 'tencent' ? '腾讯跑腿' : (row.delivery_id || ''),
             pageNum: 1,
             pageSize: 50,
             withWxStatus: 1,
@@ -520,6 +586,9 @@ function openBindDialog(row) {
             partnerType: row.partner_type || '1',
             env: row.env || 'sandbox',
             sandboxOpenid: row.sandbox_openid || '',
+            goodsType: row.goods_type || 12,
+            expressType: row.express_type || 1,
+            callbackUrl: row.callback_url || '',
         })
     } else {
         isEdit.value = false
@@ -527,6 +596,7 @@ function openBindDialog(row) {
         Object.assign(form, {
             deliveryId: '', bizId: '', accountName: '', password: '', accountType: 1, isCash: false,
             provider: 'wechat', appKey: '', appSecret: '', partnerCode: '', customerId: '', partnerKey: '', partnerType: '1', env: 'sandbox', sandboxOpenid: '',
+            goodsType: 12, expressType: 1, callbackUrl: '',
         })
     }
     dialogVisible.value = true
@@ -539,6 +609,15 @@ async function handleSubmit() {
     if (form.provider === 'wechat') {
         if (!form.deliveryId || !form.bizId) {
             toast('请填写快递公司ID和客户编码', 'error')
+            return
+        }
+    } else if (form.provider === 'tencent') {
+        if (!form.appKey) {
+            toast('腾讯跑腿渠道请填写 apiKey', 'error')
+            return
+        }
+        if (!isEdit.value && !form.appSecret) {
+            toast('新增腾讯跑腿账号请填写签名密钥 apiSecret', 'error')
             return
         }
     } else {
@@ -565,6 +644,9 @@ async function handleSubmit() {
             partnerType: form.partnerType,
             env: form.env,
             sandboxOpenid: form.sandboxOpenid,
+            goodsType: form.goodsType,
+            expressType: form.expressType,
+            callbackUrl: form.callbackUrl,
         }
         if (isEdit.value) {
             payload.id = editId.value

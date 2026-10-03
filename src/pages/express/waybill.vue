@@ -52,8 +52,8 @@
                 </el-table-column>
                 <el-table-column label="操作" width="260" fixed="right" align="center">
                     <template #default="scope">
-                        <el-button type="primary" size="small" link @click="openWaybill(scope.row.orderNo)">
-                            <el-icon><Document /></el-icon> 面单
+                        <el-button type="primary" size="small" link @click="openWaybill(scope.row)">
+                            <el-icon><Document /></el-icon> {{ scope.row.channel === '腾讯跑腿' ? '详情' : '面单' }}
                         </el-button>
                         <el-button type="success" size="small" link @click="openTrack(scope.row)">
                             <el-icon><Van /></el-icon> 轨迹
@@ -147,7 +147,7 @@
 <script setup>
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { Search, Refresh, Document, Van, RefreshLeft } from '@element-plus/icons-vue'
-import { getWaybillList, cancelExpressWaybill, getExpressTrack, getWaybillPrint } from '~/api/express'
+import { getWaybillList, cancelExpressWaybill, getExpressTrack, getWaybillPrint, getErrandDetail } from '~/api/express'
 import { getWaybill } from '~/api/order'
 import { toast, showModal } from '~/composables/util'
 
@@ -205,7 +205,8 @@ function handleReset() {
     handleSearch()
 }
 
-async function openWaybill(orderNo) {
+async function openWaybill(row) {
+    const orderNo = row.orderNo
     waybillVisible.value = true
     waybillLoading.value = true
     waybillImage.value = ''
@@ -213,6 +214,27 @@ async function openWaybill(orderNo) {
     waybillBillCode.value = ''
     waybillMessage.value = ''
     waybillRaw.value = null
+    // 腾讯跑腿无电子面单，直接展示 orderDetail（状态/费用/骑手/取送件照片）
+    if (row.channel === '腾讯跑腿') {
+        try {
+            const res = await getErrandDetail(orderNo)
+            const result = res && res.data ? res.data : res
+            if (result && result.success === false) {
+                waybillMessage.value = result.message || '获取跑腿详情失败'
+            } else {
+                const d = result && result.detail ? result.detail : {}
+                waybillBillCode.value = (result && result.orderCode) || row.waybillNo || ''
+                waybillMessage.value = '订单状态：' + ((result && result.orderStatusDesc) || ('状态码 ' + (result && result.orderStatus)))
+                waybillRaw.value = d
+            }
+        } catch (e) {
+            console.error(e)
+            waybillMessage.value = '获取跑腿详情失败'
+        } finally {
+            waybillLoading.value = false
+        }
+        return
+    }
     // 1) 优先实时向渠道取（微信返回面单 HTML，中通返回面单图片）
     try {
         const res = await getWaybillPrint(orderNo)
@@ -332,7 +354,10 @@ async function openTrack(row) {
     trackList.value = []
     trackError.value = ''
     try {
-        const res = await getExpressTrack({ deliveryId: row.company, waybillId: row.waybillNo })
+        const res = await getExpressTrack({
+            deliveryId: row.channel === '腾讯跑腿' ? 'tencent' : row.company,
+            waybillId: row.waybillNo,
+        })
         const result = res && res.data ? res.data : res
         const list = Array.isArray(result) ? result : ((result && (result.list || result.data)) || [])
         trackList.value = list
@@ -367,7 +392,7 @@ async function handleCancelWaybill(row, force = false) {
         const code = payload.errCode || ''
         const msg = payload.exceptionMsg || payload.errMessage || '取消运单失败'
         // 渠道撤销失败时，询问是否仅本地回滚
-        if (!force && (code === 'WX_CANCEL_FAILED' || code === 'ZTO_CANCEL_FAILED')) {
+        if (!force && (code === 'WX_CANCEL_FAILED' || code === 'ZTO_CANCEL_FAILED' || code === 'ERRAND_CANCEL_FAILED')) {
             const ok = await showModal(
                 '物流侧撤销失败：' + msg + '\n是否仅做本地撤销？（订单恢复待发货，但快递侧运单可能仍在）',
                 'warning',
