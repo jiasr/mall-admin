@@ -877,7 +877,7 @@ const shipOrderNo = ref('')
 const shipMode = ref('manual')
 const accountOptions = ref([])
 // 按渠道过滤发货可选账号
-const wechatAccountOptions = computed(() => accountOptions.value.filter(a => a.provider !== 'zto'))
+const wechatAccountOptions = computed(() => accountOptions.value.filter(a => a.provider === 'wechat'))
 const ztoAccountOptions = computed(() => accountOptions.value.filter(a => a.provider === 'zto'))
 const tencentAccountOptions = computed(() => accountOptions.value.filter(a => a.provider === 'tencent'))
 // 当前选中的发货账号（用于散单提示）
